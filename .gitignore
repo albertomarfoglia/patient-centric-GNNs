@@ -208,3 +208,7 @@ __marimo__/
 
 results
 processed_data
+
+results_old
+.vscode
+generation/mimic_external_codes

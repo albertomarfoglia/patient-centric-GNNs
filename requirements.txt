@@ -6,3 +6,4 @@ torch-geometric==2.6.1
 scikit-learn==1.5.1
 rdflib==7.0.0
 joblib==1.4.2
+sentence_transformers==5.2.3

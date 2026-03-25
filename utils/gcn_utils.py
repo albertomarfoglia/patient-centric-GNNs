@@ -1,11 +1,17 @@
-from torch_geometric.logging import log
-import torch
-from sklearn.model_selection import StratifiedKFold, train_test_split
-from sklearn.metrics import (
-    accuracy_score, confusion_matrix, precision_recall_fscore_support,
-    roc_auc_score, ConfusionMatrixDisplay
-)
 import pandas as pd
+import torch
+import numpy as np
+import torch.nn.functional as F
+
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    accuracy_score,
+    confusion_matrix,
+    precision_recall_fscore_support,
+    roc_auc_score,
+)
+from sklearn.model_selection import StratifiedKFold, train_test_split
+
 
 # ------------------------ Device Selection ------------------------ #
 def get_device():
@@ -34,16 +40,29 @@ def k_fold(X, y, folds):
         val_y.append(y[val_idx])
         test_y.append(y[test_idx])
 
+    print(f"Train-t values: {[arr.sum() for arr in train_y]}, Val-t values: {[arr.sum() for arr in val_y]}, Test-t values: {[arr.sum() for arr in test_y]}")
+
     return train_indices, val_indices, test_indices, train_y, val_y, test_y
 
-
 # ------------------------ Metrics ------------------------ #
-def compute_metrics(y_true, y_pred, y_prob):
+def compute_metrics(y_true, y_pred, y_prob, num_classes):
     """Compute accuracy, precision, recall, F1, and AUC."""
+
+    # Accuracy
     accuracy = accuracy_score(y_true, y_pred)
-    auc_class = roc_auc_score(y_true, y_prob, average=None, multi_class='ovr')
-    auc_macro = roc_auc_score(y_true, y_prob, average='macro', multi_class='ovr')
-    auc_weighted = roc_auc_score(y_true, y_prob, average='weighted', multi_class='ovr')
+
+    # AUC
+    if num_classes == 2:
+        auc_class = roc_auc_score(y_true, y_prob[:, 1])
+        auc_macro = auc_class
+        auc_weighted = auc_class
+    else:
+        # multi-class
+        auc_class = roc_auc_score(y_true, y_prob, average=None, multi_class='ovr')
+        auc_macro = roc_auc_score(y_true, y_prob, average='macro', multi_class='ovr')
+        auc_weighted = roc_auc_score(y_true, y_prob, average='weighted', multi_class='ovr')
+
+    # Precision, recall, F1
     precision_class, recall_class, fscore_class, _ = precision_recall_fscore_support(y_true, y_pred, average=None)
     precision_macro, recall_macro, fscore_macro, _ = precision_recall_fscore_support(y_true, y_pred, average='macro')
     precision_weighted, recall_weighted, fscore_weighted, _ = precision_recall_fscore_support(y_true, y_pred, average='weighted')
@@ -73,8 +92,8 @@ def save_confusion_matrix(y_true, y_pred, result_path, labels=None):
     fig = disp.plot().figure_
     fig.savefig(result_path, dpi=600)
 
-def mean_std_metrics(metrics_mean: pd.DataFrame, metrics_std: pd.DataFrame, digits=2) -> pd.DataFrame:
-    headers = ["B2H", "REHAB", "DEATH", "MACRO", "WEIGHTED"]
+def mean_std_metrics(metrics_mean: pd.DataFrame, metrics_std: pd.DataFrame, classes: list[str], digits=2) -> pd.DataFrame:
+    headers = classes + ["MACRO", "WEIGHTED"]
 
     metrics_mean = metrics_mean.reindex(headers)
     metrics_std  = metrics_std.reindex(headers)
@@ -95,3 +114,65 @@ def mean_std_metrics(metrics_mean: pd.DataFrame, metrics_std: pd.DataFrame, digi
     ])
 
     return pd.DataFrame([f1_line], columns=(headers + ["Accuracy", "AUC"]))
+
+def store_metrics(metrics: dict, classes: list[str], fold, out_path: str):
+    if(len(classes) == 2):
+        metric_df = _binary_metrics(metrics, classes)
+    else:
+        metric_df = _multiclass_metrics(metrics, classes)
+
+    metric_df.index.name = f'Fold_{fold}'
+    metric_df.to_csv(out_path, mode='a')
+    return metric_df
+
+def _binary_metrics(metrics: dict, classes: list[str]):
+    return pd.DataFrame({
+        'PRECISION': np.hstack((metrics['precision_class'], metrics['precision_macro'], metrics['precision_weighted'])),
+        'RECALL': np.hstack((metrics['recall_class'], metrics['recall_macro'], metrics['recall_weighted'])),
+        'F1SCORE': np.hstack((metrics['fscore_class'], metrics['fscore_macro'], metrics['fscore_weighted'])),
+        'ACCURACY': np.hstack((np.zeros(3), metrics['accuracy'])),
+        'AUC': np.hstack(([metrics['auc_macro'], metrics['auc_macro']], metrics['auc_macro'], metrics['auc_macro']))  # same AUC for both classes + macro/weighted
+    },
+    index=classes + ['MACRO', 'WEIGHTED'])
+
+def _multiclass_metrics(metrics: dict, classes: list[str]):
+   return pd.DataFrame({
+        'PRECISION': np.hstack((metrics['precision_class'], metrics['precision_macro'], metrics['precision_weighted'])),
+        'RECALL': np.hstack((metrics['recall_class'], metrics['recall_macro'], metrics['recall_weighted'])),
+        'F1SCORE': np.hstack((metrics['fscore_class'], metrics['fscore_macro'], metrics['fscore_weighted'])),
+        'ACCURACY': np.hstack((np.zeros(4), metrics['accuracy'])),
+        'AUC': np.hstack((metrics['auc_class'], metrics['auc_macro'], metrics['auc_weighted'])),
+    }, index=classes + ['MACRO', 'WEIGHTED'])
+
+
+# ------------------------ Evaluation ------------------------ #
+def evaluate_model(model, data, fold, result_dir, data_model, classes, time_opt):
+    model.eval()
+    with torch.no_grad():
+        out = model(data)
+        y_pred = out.argmax(dim=-1)
+        y_prob = F.softmax(out, dim=-1)
+
+    metrics = compute_metrics(
+        data.test_y.cpu(),
+        y_pred[data.test_idx].cpu(),
+        y_prob[data.test_idx].cpu(),
+        len(classes),
+    )
+
+    metric_df = store_metrics(
+        metrics,
+        classes,
+        fold,
+        out_path=f"{result_dir}/metrics_{data_model}_{time_opt}_{data.num_patients}.csv",
+    )
+
+    # Save confusion matrix
+    save_confusion_matrix(
+        data.test_y.cpu(),
+        y_pred[data.test_idx].cpu(),
+        f"{result_dir}/cm/cm_{data_model}_{time_opt}_{data.num_patients}_{fold}.jpg",
+        labels=classes,
+    )
+
+    return metric_df

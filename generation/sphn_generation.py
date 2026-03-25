@@ -39,9 +39,9 @@ def gen_sphn_kg(num_patients, timeOpt, data_path: Path):
         "nad": "C01CA03",  # ACT / drug administration event
         "corotrop": "C01CE02",  # ACT / drug administration event
         "morphine": "N02AA01",  # ACT / drug administration event
-        "dve": "00P6X0Z",  # Removal of Drainage Device from Cerebral Ventricle External Approach (ICD-10) / procedure
-        "atl": "Z98.6",  # ICD-10 Drainage Device from Cerebral Ventricle External Approach (ICD-10) / procedure
-        "iot": "0BH17EZ",  # ICD-10 / procedure thacheotomie
+        "dve": "00P6X0Z",  # Removal of Drainage Device from Cerebral Ventricle External Approach (ICD-10-PCS) / procedure
+        "atl": "Z98.6",  # ICD-10-CM Percutaneous transluminal angioplasty
+        "iot": "0BH17EZ",  # ICD-10-PCS / procedure thacheotomie
     }
 
     
