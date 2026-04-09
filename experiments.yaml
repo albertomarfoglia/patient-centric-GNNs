@@ -1,0 +1,48 @@
+experiments:
+  mortality:
+    - task: first_24_in_hospital_mortality
+      sample_size: 20000
+      num_of_samples: 5
+
+    - task: first_48_in_hospital_mortality
+      sample_size: 20000
+      num_of_samples: 5
+
+    - task: first_24_in_icu_mortality
+      sample_size: 8768
+      num_of_samples: 5
+
+    - task: first_48_in_icu_mortality
+      sample_size: 8666
+      num_of_samples: 5
+
+    - task: post_hospital_discharge_mortality_30d
+      sample_size: 5000
+      num_of_samples: 2
+
+    - task: post_hospital_discharge_mortality_1y
+      sample_size: 10000
+      num_of_samples: 5
+
+  los:
+    - task: first_48_in_hospital_los
+      sample_size: 20000
+      num_of_samples: 5
+
+    - task: first_48_in_icu_los
+      sample_size: 7408
+      num_of_samples: 5
+
+  readmission:
+    - task: readmission_30d
+      sample_size: 10000
+      num_of_samples: 5
+
+  phenotyping:
+    - task: ckd_in_diabetics_within_5y_of_kidney_panel
+      sample_size: 1876
+      num_of_samples: 5
+
+    - task: myocardial_infarction_1-5y_phenotyping
+      sample_size: 886
+      num_of_samples: 5

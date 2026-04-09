@@ -137,9 +137,7 @@ def download_ontology_with_progress(ontology_url, apikey, desc="Downloading"):
         r.raise_for_status()
         total_size = int(r.headers.get("content-length", 0))
         buffer = BytesIO()
-        with tqdm(
-            total=total_size, unit="B", unit_scale=True, desc=desc
-        ) as pbar:
+        with tqdm(total=total_size, unit="B", unit_scale=True, desc=desc) as pbar:
             for chunk in r.iter_content(chunk_size=8192):
                 buffer.write(chunk)
                 pbar.update(len(chunk))
@@ -161,12 +159,14 @@ def load_ontology_ancestors_stream(
     if output_file.exists():
         print(f"Loading cached {onto_code} ontology from {output_file}.")
         return output_file
-    
+
     if len(childs_concepts) == 0:
         print(f"Skip {onto_code} ontology loading.")
         return
 
-    ontology_graph = download_ontology_with_progress(onto_url, apikey, desc=f"Downloading {onto_code}")
+    ontology_graph = download_ontology_with_progress(
+        onto_url, apikey, desc=f"Downloading {onto_code}"
+    )
 
     with gzip.open(output_file, "wt", encoding="utf-8") as f:
         for concept in tqdm(childs_concepts, desc=f"Processing {onto_code}'s concepts"):
@@ -178,9 +178,10 @@ def load_ontology_ancestors_stream(
                         f"{triple[0].n3()} {triple[1].n3()} {triple[2].n3()} .\n"  # type: ignore
                     )
 
-   # with open(output_file, "wb") as f:
-    #     for concept in tqdm(concepts, desc="Processing concepts"):
-    #         subgraph = ontology.query(query_object=to_query(concept)).graph
-    #         if subgraph is not None:
-    #             subgraph.serialize(destination=f, format="nt")
-    #             return output_file
+
+# with open(output_file, "wb") as f:
+#     for concept in tqdm(concepts, desc="Processing concepts"):
+#         subgraph = ontology.query(query_object=to_query(concept)).graph
+#         if subgraph is not None:
+#             subgraph.serialize(destination=f, format="nt")
+#             return output_file
