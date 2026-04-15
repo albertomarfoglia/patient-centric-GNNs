@@ -98,11 +98,7 @@ def load_data(num_patients: int, embed_dim: int, dcfg: LoaderConfig):
     patients = [
         entity_dict[f"{ROOT_URI_MAP[dcfg.data_mode]}{i}"] for i in range(num_patients)
     ]
-    y = np.asarray(
-        joblib.load(dcfg.outcomes_path)
-        # joblib.load(f"data/outcomes_{data_model}_{timeOpt}_{num_patients}_{idx}.joblib")
-        # joblib.load(f"/home/ubuntu/workspace/meds-to-owl-examples/exports/inhospital_mortality/labels/outcomes_{data_model}_{timeOpt}_{num_patients}_{idx}.joblib")
-    )
+    y = np.asarray(joblib.load(dcfg.outcomes_path))
 
     triples = pd.read_csv(
         dcfg.triples_path,
@@ -132,14 +128,8 @@ def load_data(num_patients: int, embed_dim: int, dcfg: LoaderConfig):
         tensor=Parameter(torch.empty(num_nodes, embed_dim)), gain=math.sqrt(2.0)
     )
     if vp := dcfg.text_values_path:
-        data.txt_x = torch.Tensor(
-            np.load(vp)
-            # np.load(f"processed_data/{data_model}_{timeOpt}_text_{num_patients}_{idx}.npy")
-        )
-    data.num_x = torch.Tensor(
-        np.load(dcfg.numeric_values_path)
-        # np.load(f"processed_data/{data_model}_{timeOpt}_numeric_{num_patients}_{idx}.npy")
-    ).view(-1, 1)
+        data.txt_x = torch.Tensor(np.load(vp))
+    data.num_x = torch.Tensor(np.load(dcfg.numeric_values_path)).view(-1, 1)
     data.num_relations = edge_type.max().item() + 1
 
     return data, patients, y
@@ -159,7 +149,6 @@ def train_model(model, data, lr, wd, max_epochs=2001, patience=30):
         out = model(data)
 
         train_loss = torch.nn.functional.nll_loss(out[data.train_idx], data.train_y)
-        # train_loss = criterion(out[data.train_idx], data.train_y)
         train_loss.backward()
         optimizer.step()
 
@@ -219,9 +208,7 @@ def run_rgcn(
         loader,
     )
     data.num_patients = num_patients
-    data.model_path = (
-        f"{result_dir}/model_weights_{time_opt}_{num_patients}.pth"
-    )
+    data.model_path = f"{result_dir}/model_weights_{time_opt}_{num_patients}.pth"
 
     # Save hyperparameters
     hyper_param = pd.DataFrame(
@@ -304,9 +291,5 @@ def run_rgcn(
         index=False,
         mode="a",
     )
-    metrics_mean.to_csv(
-        f"{result_dir}/metrics_{time_opt}_{num_patients}.csv", mode="a"
-    )
-    metrics_std.to_csv(
-        f"{result_dir}/metrics_{time_opt}_{num_patients}.csv", mode="a"
-    )
+    metrics_mean.to_csv(f"{result_dir}/metrics_{time_opt}_{num_patients}.csv", mode="a")
+    metrics_std.to_csv(f"{result_dir}/metrics_{time_opt}_{num_patients}.csv", mode="a")

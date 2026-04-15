@@ -9,6 +9,7 @@ import yaml
 from pipelines.preprocess_pipeline import run_preprocess_pipeline
 from pipelines.train_pipeline import run_train_pipeline
 
+
 def main():
     model_cfg = ModelConfig(lr=1e-3)
 
@@ -39,7 +40,7 @@ def main():
             run_preprocess_pipeline(
                 dataset_cfg,
                 exp_cfg,
-                bioportal_apikey="8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
+                # bioportal_apikey="8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
             )
 
             run_train_pipeline(
