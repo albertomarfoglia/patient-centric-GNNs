@@ -12,6 +12,7 @@ class ExperimentConfig:
         dataset_samples: int = 1,
         time_option = "TS",
         include_text = False,
+        model_type = "rgcn"
     ):
         self.folds = folds
         self.dataset_samples = dataset_samples
@@ -20,3 +21,4 @@ class ExperimentConfig:
         self.enrich_events = enrich_events
         self.enrich_by_graphs = enrich_by_graphs
         self.data_mode = data_mode
+        self.model_type = model_type

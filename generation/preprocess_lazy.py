@@ -20,15 +20,21 @@ NUMERIC_RELATION = f"<{NS_ONTO}numericValue>"
 TEXT_RELATION = f"<{NS_ONTO}textValue>"
 TIME_RELATION = f"<{NS_ONTO}time>"
 
-def iter_nt_gz_files_fast(input_dir: Path, external_ontos: list[Path]):
+
+def iter_nt_files_fast(input_dir: Path, external_ontos: list[Path]):
     """
-    True streaming N-Triples iterator.
+    Streaming N-Triples iterator supporting:
+    - .nt.gz (compressed)
+    - .nt (plain text)
+
+    Features:
     - No line parsing
     - No full-file buffering
-    - One decompression pass
+    - One pass
     - Incremental yields
     """
     files = list(input_dir.glob("*.nt.gz"))
+    files.extend(input_dir.glob("*.nt"))
     files.extend(external_ontos)
 
     for path in tqdm(files, desc="Processing .nt graph portion", dynamic_ncols=True):
@@ -40,10 +46,15 @@ def iter_nt_gz_files_fast(input_dir: Path, external_ontos: list[Path]):
             def triple(self, s, p, o):
                 queue.append((str(s), str(p), str(o)))
 
+        def open_file(p: Path):
+            if p.suffix == ".gz":
+                return gzip.open(p, "rb")
+            return open(p, "rb")
+
         def parse_file():
             nonlocal done
             parser = W3CNTriplesParser(sink=StreamingSink())  # type: ignore
-            with gzip.open(path, "rb") as f:
+            with open_file(path) as f:
                 parser.parse(cast(IO[bytes], f))
             done = True
 
@@ -58,11 +69,6 @@ def iter_nt_gz_files_fast(input_dir: Path, external_ontos: list[Path]):
         thread.join()
 
 
-# --------------------------------------------------
-# Main preprocessing
-# --------------------------------------------------
-
-
 def preprocess_meds_kg(
     dcfg: LoaderConfig,
     ecfg: ExperimentConfig,
@@ -71,24 +77,21 @@ def preprocess_meds_kg(
     ent_to_id = {}
     rel_to_id = {}
 
-    time_value_ids = []
-
-    next_ent = 0
-    next_rel = 0
+    next_ent, next_rel = 0, 0
 
     numeric_values = []
     text_values = []
+    time_value_ids = []
 
     with open(dcfg.triples_path, "w", buffering=1024 * 1024) as out:
-        iter = iter_nt_gz_files_fast(dcfg.dataset_dir, external_ontos=ecfg.enrich_by_graphs)
+        iter = iter_nt_files_fast(
+            dcfg.dataset_dir, external_ontos=ecfg.enrich_by_graphs
+        )
 
         for h, r, t in iter:
-            # ---- invert hasSubject ----
+            # swap subject/event
             if r == str(NS_ONTO["hasSubject"]):
-                # subjects_per_event[h] = t
-                tmp = t
-                t = h
-                h = tmp
+                h, t = t, h
 
             if r == str(NS_ONTO["hasCode"]) and (code := ecfg.enrich_events.get(t)):
                 r = code
@@ -96,17 +99,16 @@ def preprocess_meds_kg(
             # ---- Entity mapping (dynamic)
             if h not in ent_to_id:
                 ent_to_id[h] = next_ent
-                numeric_values.append(0.0)
-                text_values.append("")
+                numeric_values.append(np.nan)
+                text_values.append(None)
                 next_ent += 1
 
             if t not in ent_to_id:
                 ent_to_id[t] = next_ent
-                numeric_values.append(0.0)
-                text_values.append("")
+                numeric_values.append(np.nan)
+                text_values.append(None)
                 next_ent += 1
 
-            # ---- Relation mapping
             if r not in rel_to_id:
                 rel_to_id[r] = next_rel
                 next_rel += 1
@@ -114,33 +116,52 @@ def preprocess_meds_kg(
             h_id = ent_to_id[h]
             r_id = rel_to_id[r]
             t_id = ent_to_id[t]
-
-            # ---- Write triple
-            out.write(f"{h_id}\t{r_id}\t{t_id}\n")
+            #out.write(f"{h_id}\t{r_id}\t{t_id}\n")
 
             # ---- Extract numeric literal
             if r == str(NS_ONTO["numericValue"]):
                 try:
-                    numeric_values[t_id] = round(float(t), 2)
+                    # numeric_values[h_id] = float(t)
+                    # continue
+
+                    numeric_values[t_id] = float(t)
                 except Exception:
-                    print("Exception during numericValue conversion")
-                    pass
+                    print("An exception is occured during numeric conversion")
+                    # numeric_values[h_id] = np.nan
+                    # continue
+                    numeric_values[t_id] = np.nan
 
             elif r == str(NS_ONTO["time"]) and ecfg.time_option == "TS":
                 try:
-                    val = datetime.strptime(t, "%Y-%m-%dT%H:%M:%S")
-                    numeric_values[t_id] = val.timestamp()
+                    dt = datetime.strptime(t, "%Y-%m-%dT%H:%M:%S")
+                    # numeric_values[h_id] = dt.timestamp()
+                    # time_value_ids.append(h_id)
+                    # continue
+
+                    numeric_values[t_id] = dt.timestamp()
                     time_value_ids.append(t_id)
                 except Exception:
-                    print("Exception during time conversion")
-                    pass
+                    print("An exception is occured during timestamp conversion")
+                    # numeric_values[h_id] = np.nan
+                    # continue
 
-            elif r == str(NS_ONTO["textValue"]) and ecfg.include_text:
-                try:
-                    text_values[t_id] = t 
-                except Exception:
-                    print("Exception during textValue conversion")
-                    pass
+                    numeric_values[t_id] = np.nan
+
+            elif (r == str(NS_ONTO["textValue"])) and ecfg.include_text:
+                # text_values[h_id] = t
+                # continue
+
+                text_values[t_id] = t
+
+            # skip these nodes
+            # elif (r == str(NS_ONTO["codeString"])) or (
+            #     r == str(NS_ONTO["codeDescription"])
+            # ):
+            #     continue
+
+            # r_id = rel_to_id[r]
+            # t_id = ent_to_id[t]
+            out.write(f"{h_id}\t{r_id}\t{t_id}\n")
 
     print(f"Entities: {len(ent_to_id)} | Relations: {len(rel_to_id)}")
 
@@ -150,15 +171,11 @@ def preprocess_meds_kg(
     print("Computing time quantile transformation..")
 
     if ecfg.time_option == "TS":
-        timestamps = np.array([numeric_values[i] for i in time_value_ids]).reshape(
-            -1, 1
-        )
+        ts = np.array([numeric_values[i] for i in time_value_ids]).reshape(-1, 1)
 
-        timestamps_scaled = QuantileTransformer(
-            output_distribution="uniform"
-        ).fit_transform(timestamps)
+        ts_scaled = QuantileTransformer(output_distribution="uniform").fit_transform(ts)
 
-        for idx, val in zip(time_value_ids, timestamps_scaled):
+        for idx, val in zip(time_value_ids, ts_scaled):
             numeric_values[idx] = float(val)
 
     # --------------------------------------------------
@@ -167,15 +184,34 @@ def preprocess_meds_kg(
 
     if ecfg.include_text:
         print("Computing string embeddings..")
-        model_name = "all-MiniLM-L6-v2"
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        np.save(
-            file=str(dcfg.text_values_path),
-            arr=SentenceTransformer(model_name, device=device, cache_folder="__pycache__")
-            .encode(text_values, batch_size=128, convert_to_tensor=True, device="cuda")
-            .cpu()
-            .numpy(),
-        )
+
+        valid_idx = [i for i, t in enumerate(text_values) if t is not None]
+
+        embeddings = np.zeros((len(text_values), 384), dtype=np.float32)
+
+        if valid_idx:
+            model = SentenceTransformer(
+                "all-MiniLM-L6-v2", device=device, cache_folder="__pycache__"
+            )
+            encoded = model.encode(
+                [text_values[i] for i in valid_idx],
+                batch_size=128,
+                convert_to_tensor=False,
+            )
+
+            for i, emb in zip(valid_idx, encoded):
+                embeddings[i] = emb
+
+        np.save(str(dcfg.text_values_path), embeddings)
+
+    # --------------------------------------------------
+    # Save numeric array
+    # --------------------------------------------------
+    np.save(
+        dcfg.numeric_values_path,
+        np.array(numeric_values, dtype=np.float32).reshape(-1, 1),
+    )
 
     # --------------------------------------------------
     # Save entity & relation mappings
@@ -190,16 +226,5 @@ def preprocess_meds_kg(
     with open(dcfg.relations_path, "w", buffering=1024 * 1024) as f:
         for rel, idx in tqdm(rel_to_id.items(), total=len(rel_to_id), desc="Relations"):
             f.write(f"{idx}\t{rel}\n")
-
-    # --------------------------------------------------
-    # Save numeric array
-    # --------------------------------------------------
-
-    numeric_arr = np.array(numeric_values, dtype=np.float32).reshape(-1, 1)
-
-    np.save(
-        dcfg.numeric_values_path,
-        numeric_arr,
-    )
 
     print("Processing complete.")

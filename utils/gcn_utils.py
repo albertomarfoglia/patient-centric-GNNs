@@ -1,7 +1,10 @@
+from collections import Counter
+
 import pandas as pd
 import torch
 import numpy as np
 import torch.nn.functional as F
+import os
 
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
@@ -41,9 +44,12 @@ def k_fold(X, y, folds):
         val_y.append(y[val_idx])
         test_y.append(y[test_idx])
 
-    print(
-        f"Train-t values: {[arr.sum() for arr in train_y]}, Val-t values: {[arr.sum() for arr in val_y]}, Test-t values: {[arr.sum() for arr in test_y]}"
-    )
+        # Print class distributions
+        print("| Fold")
+        print("|__ Train distribution:", Counter(y[train_idx]))
+        print("|__ Val distribution:  ", Counter(y[val_idx]))
+        print("|__ Test distribution: ", Counter(y[test_idx]))
+        print("\n")
 
     return train_indices, val_indices, test_indices, train_y, val_y, test_y
 
@@ -252,17 +258,34 @@ def _multiclass_metrics(metrics: dict, classes: list[str]):
 # ------------------------ Evaluation ------------------------ #
 def evaluate_model(model, data, fold, result_dir, data_model, classes, time_opt):
     model.eval()
-    with torch.no_grad():
-        out = model(data)
-        y_pred = out.argmax(dim=-1)
-        y_prob = F.softmax(out, dim=-1)
 
-    metrics = compute_metrics(
-        data.test_y.cpu(),
-        y_pred[data.test_idx].cpu(),
-        y_prob[data.test_idx].cpu(),
-        len(classes),
-    )
+    if len(classes) > 2:
+        with torch.no_grad():
+            out = model(data)
+            y_pred = out.argmax(dim=-1)
+            y_prob = F.softmax(out, dim=-1)
+
+            metrics = compute_metrics(
+                data.test_y.cpu(),
+                y_pred[data.test_idx].cpu(),
+                y_prob[data.test_idx].cpu(),
+                len(classes),
+            )
+    else:
+        with torch.no_grad():
+            out = model(data)
+            y_prob = torch.sigmoid(out)
+            y_pred = (y_prob > 0.5).long()
+
+            y_prob_test = y_prob[data.test_idx].cpu()
+            y_prob_2d = torch.stack([1 - y_prob_test, y_prob_test], dim=1)
+
+            metrics = compute_metrics(
+                data.test_y.cpu(),
+                y_pred[data.test_idx].cpu(),
+                y_prob_2d,
+                len(classes),
+            )
 
     metric_df = store_metrics(
         metrics,
@@ -278,5 +301,12 @@ def evaluate_model(model, data, fold, result_dir, data_model, classes, time_opt)
         f"{result_dir}/cm/cm_{data_model}_{time_opt}_{data.num_patients}_{fold}.jpg",
         labels=classes,
     )
+
+    y_folder = f"{result_dir}/{fold}"
+    os.makedirs(y_folder, exist_ok=True)
+    np.save(f"{y_folder}/y_true.npy", data.test_y.cpu().numpy())
+    np.save(f"{y_folder}/y_index.npy", data.test_idx.cpu().numpy())
+    np.save(f"{y_folder}/y_pred.npy", y_pred[data.test_idx].cpu().numpy())
+    np.save(f"{y_folder}/y_prob.npy", y_prob[data.test_idx].cpu().numpy())
 
     return metric_df

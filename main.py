@@ -26,8 +26,9 @@ def main():
                 folds=5,
                 dataset_samples=exp["num_of_samples"],
                 time_option="TS",
-                include_text=True,
+                include_text=False,
                 data_mode=MEDSFormat(),
+                model_type="gcn",
                 # enrich_events = MIMIC_ENHANCER_DICT,
             )
 
@@ -40,7 +41,7 @@ def main():
             run_preprocess_pipeline(
                 dataset_cfg,
                 exp_cfg,
-                # bioportal_apikey="8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
+                #bioportal_apikey="8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
             )
 
             run_train_pipeline(

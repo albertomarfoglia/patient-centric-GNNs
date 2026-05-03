@@ -1,6 +1,7 @@
 # pipelines/train_pipeline.py
 
-from models.node_pred_rgcn import run_rgcn
+from models.node_pred_gnn import run_gnn
+
 
 def run_train_pipeline(
     dataset_cfg,
@@ -9,10 +10,9 @@ def run_train_pipeline(
 ):
 
     for idx in range(exp_cfg.dataset_samples):
-        run_rgcn(
+        run_gnn(
             num_patients=dataset_cfg.num_patients,
-            folds=exp_cfg.folds,
-            time_opt=exp_cfg.time_option,
             mcfg=model_cfg,
             loader=dataset_cfg.generate(idx, exp_cfg),
+            excfg=exp_cfg,
         )

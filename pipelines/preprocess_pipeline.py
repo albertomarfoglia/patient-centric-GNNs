@@ -47,5 +47,5 @@ def run_preprocess_pipeline(
         if exp_cfg.data_mode.data_model == "meds":
             preprocess_meds_kg(
                 dcfg=dataset_cfg.generate(idx, exp_cfg),
-                ecfg=exp_cfg
+                ecfg=exp_cfg,
             )
