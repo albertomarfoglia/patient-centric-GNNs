@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from configs.experiment import ExperimentConfig
-from generation.preprocess_lazy import preprocess_meds_kg
+from generation.preprocess_lazy import preprocess_meds_kg, preprocess_sphn_kg
 
 from utils.ontologies import (
     EXTERNAL_ONTOLOGIES,
@@ -46,6 +46,11 @@ def run_preprocess_pipeline(
     for idx in range(exp_cfg.dataset_samples):
         if exp_cfg.data_mode.data_model == "meds":
             preprocess_meds_kg(
+                dcfg=dataset_cfg.generate(idx, exp_cfg),
+                ecfg=exp_cfg,
+            )
+        elif exp_cfg.data_mode.data_model == "sphn_pc":
+            preprocess_sphn_kg(
                 dcfg=dataset_cfg.generate(idx, exp_cfg),
                 ecfg=exp_cfg,
             )

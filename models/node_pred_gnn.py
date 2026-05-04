@@ -10,9 +10,6 @@ import os
 from configs.experiment import ExperimentConfig
 from configs.loader import LoaderConfig
 from configs.model import ModelConfig
-from models.binary.rgcn import RGCNet
-from models.binary.gat import GATNet
-from models.binary.gcn import GCNNet
 from utils.gcn_utils import (
     get_device,
     k_fold,
@@ -24,9 +21,6 @@ ROOT_URI_MAP = {
     "meds": "https://teamheka.github.io/meds-data/subject/",
     "sphn_pc": "http://nvasc.org/synth_patient_",
 }
-
-
-MODELS = {"rgcn": RGCNet, "gcn": GCNNet, "gat": GATNet}
 
 def load_data(num_patients: int, embed_dim: int, dcfg: LoaderConfig, inc_txt = False):
     entity_df = pd.read_csv(
@@ -134,9 +128,9 @@ def train_model(model, data, lr, wd, max_epochs=2001, patience=30, binary=False)
         else:
             val_loss, pred = _compute_multi_classification(model, data, optimizer)
 
-        train_acc = float((pred[data.train_idx] == data.train_y.long()).float().mean())
-        val_acc = float((pred[data.valid_idx] == data.valid_y.long()).float().mean())
-        test_acc = float((pred[data.test_idx] == data.test_y.long()).float().mean())
+        train_acc = float((pred[data.train_idx] == data.train_y).float().mean())
+        val_acc = float((pred[data.valid_idx] == data.valid_y).float().mean())
+        test_acc = float((pred[data.test_idx] == data.test_y).float().mean())
         
         # ---- early stopping logic ----
         if val_loss + min_delta < best_val_loss:
@@ -227,14 +221,14 @@ def run_gnn(
         data.valid_idx = torch.Tensor(val_idx).long().to(device)
         data.test_idx = torch.Tensor(test_idx).long().to(device)
 
-        data.train_y = torch.Tensor(train_y).float().to(device) # CHANGED
-        data.valid_y = torch.Tensor(val_y).float().to(device)
-        data.test_y = torch.Tensor(test_y).float().to(device)
+        data.train_y = torch.Tensor(train_y).long().to(device) # CHANGED
+        data.valid_y = torch.Tensor(val_y).long().to(device)
+        data.test_y = torch.Tensor(test_y).long().to(device)
 
         os.makedirs(f"{result_dir}/{fold}", exist_ok=True)
 
         # Initialize and train model
-        model = MODELS[excfg.model_type](
+        model = excfg.model_type(
             embed_dim=mcfg.embed_dim,
             hidden_dim=mcfg.hidden_dim,
             num_relations=data.num_relations,

@@ -25,7 +25,7 @@ class MimicConfig:
         sample_processed_dir = Path(f"{self.processed_dir}/{idx}")
         sample_processed_dir.mkdir(parents=True, exist_ok=True)
         sample_result_dir = Path(
-            f"results/{exp.data_mode.data_model}/{exp.model_type}/{self.task}/{idx}"
+            f"results/{exp.data_mode.data_model}/{exp.model_type.__name__}/{self.task}/{idx}"
         )
         sample_result_dir.mkdir(parents=True, exist_ok=True)
         return LoaderConfig(

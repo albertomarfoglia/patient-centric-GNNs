@@ -116,7 +116,7 @@ def preprocess_meds_kg(
             h_id = ent_to_id[h]
             r_id = rel_to_id[r]
             t_id = ent_to_id[t]
-            #out.write(f"{h_id}\t{r_id}\t{t_id}\n")
+            # out.write(f"{h_id}\t{r_id}\t{t_id}\n")
 
             # ---- Extract numeric literal
             if r == str(NS_ONTO["numericValue"]):
@@ -163,8 +163,104 @@ def preprocess_meds_kg(
             # t_id = ent_to_id[t]
             out.write(f"{h_id}\t{r_id}\t{t_id}\n")
 
-    print(f"Entities: {len(ent_to_id)} | Relations: {len(rel_to_id)}")
+    _store_arrays(
+        dcfg,
+        ecfg,
+        numeric_values,
+        time_value_ids,
+        text_values,
+        ent_to_id,
+        rel_to_id,
+    )
 
+
+def preprocess_sphn_kg(
+    dcfg: LoaderConfig,
+    ecfg: ExperimentConfig,
+):
+
+    ent_to_id = {}
+    rel_to_id = {}
+
+    next_ent, next_rel = 0, 0
+
+    numeric_values = []
+    text_values = []
+    time_value_ids = []
+
+    with open(dcfg.triples_path, "w", buffering=1024 * 1024) as out:
+        iter = iter_nt_files_fast(
+            dcfg.dataset_dir, external_ontos=ecfg.enrich_by_graphs
+        )
+
+        for h, r, t in iter:
+            if h not in ent_to_id:
+                ent_to_id[h] = next_ent
+                numeric_values.append(np.nan)
+                text_values.append(None)
+                next_ent += 1
+
+            if t not in ent_to_id:
+                ent_to_id[t] = next_ent
+                numeric_values.append(np.nan)
+                text_values.append(None)
+                next_ent += 1
+
+            if r not in rel_to_id:
+                rel_to_id[r] = next_rel
+                next_rel += 1
+
+            h_id = ent_to_id[h]
+            r_id = rel_to_id[r]
+            t_id = ent_to_id[t]
+
+            if r == "http://sphn.org/hasValue":
+                try:
+                    numeric_values[t_id] = float(t)
+                except Exception:
+                    print("An exception is occured during numeric conversion")
+                    numeric_values[t_id] = np.nan
+
+            elif (
+                r == "http://sphn.org/hasStartDateTime"
+                or r == "http://sphn.org/hasDeterminationDateTime"
+            ) and ecfg.time_option == "TS":
+                try:
+                    dt = datetime.strptime(t, "%Y-%m-%dT%H:%M:%S")
+                    numeric_values[t_id] = dt.timestamp()
+                    time_value_ids.append(t_id)
+                except Exception:
+                    print("An exception is occured during timestamp conversion")
+                    numeric_values[t_id] = np.nan
+
+            elif (r == "") and ecfg.include_text:
+                text_values[t_id] = t
+
+            out.write(f"{h_id}\t{r_id}\t{t_id}\n")
+
+
+    _store_arrays(
+        dcfg,
+        ecfg,
+        numeric_values,
+        time_value_ids,
+        text_values,
+        ent_to_id,
+        rel_to_id,
+    )
+
+
+def _store_arrays(
+    dcfg: LoaderConfig,
+    ecfg: ExperimentConfig,
+    numeric_values,
+    time_value_ids,
+    text_values,
+    ent_to_id,
+    rel_to_id,
+):
+
+    print(f"Entities: {len(ent_to_id)} | Relations: {len(rel_to_id)}")
     # --------------------------------------------------
     # Compute time quantile transformation
     # --------------------------------------------------

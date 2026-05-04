@@ -6,12 +6,13 @@ from configs.model import ModelConfig
 from configs.experiment import ExperimentConfig
 import yaml
 
+from models.binary.gcn import GCNNet
 from pipelines.preprocess_pipeline import run_preprocess_pipeline
 from pipelines.train_pipeline import run_train_pipeline
 
 
 def main():
-    model_cfg = ModelConfig(lr=1e-3)
+    model_cfg = ModelConfig()
 
     with open("experiments.yaml", "r") as f:
         exp_config = yaml.safe_load(f)["experiments"]
@@ -24,11 +25,11 @@ def main():
 
             exp_cfg = ExperimentConfig(
                 folds=5,
-                dataset_samples=exp["num_of_samples"],
+                dataset_samples=1,  # exp["num_of_samples"],
                 time_option="TS",
                 include_text=False,
                 data_mode=MEDSFormat(),
-                model_type="gcn",
+                model_type=GCNNet,
                 # enrich_events = MIMIC_ENHANCER_DICT,
             )
 

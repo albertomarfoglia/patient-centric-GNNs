@@ -4,4 +4,4 @@ from dataclasses import dataclass
 
 @dataclass
 class SPHNFormat:
-    data_model: str = "sphn"
+    data_model: str = "sphn_pc"

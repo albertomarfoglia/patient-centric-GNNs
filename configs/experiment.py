@@ -7,12 +7,12 @@ class ExperimentConfig:
         self,
         folds: int,
         data_mode,
+        model_type,
         enrich_by_graphs: list[Path] = [],
         enrich_events: dict[str, str] = dict(),
         dataset_samples: int = 1,
         time_option = "TS",
         include_text = False,
-        model_type = "rgcn"
     ):
         self.folds = folds
         self.dataset_samples = dataset_samples

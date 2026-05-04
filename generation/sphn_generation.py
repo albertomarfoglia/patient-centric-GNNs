@@ -1,4 +1,3 @@
-from pathlib import Path
 import pandas as pd
 import numpy as np
 import joblib
@@ -7,12 +6,18 @@ from rdflib import ConjunctiveGraph
 from string import Template
 from scipy.stats import norm
 from datetime import datetime, timedelta
+import os
 
 
-def gen_sphn_kg(num_patients, timeOpt, data_path: Path):
+def gen_sphn_kg(num_patients, timeOpt, data_path):
     df = pd.read_csv(data_path, index_col=0)
     df.rename(columns={'output': 'outcome'}, inplace=True)
     df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    output_labels_dir = "data/neurovasc/graph/labels"
+    output_graph_dir = f"data/neurovasc/graph/sphn_pc_{num_patients}"
+    os.makedirs(output_graph_dir)
+    os.makedirs(output_labels_dir)
 
     numerical = ['hospital_stay_length', 'gcs', 'nb_acte', 'age']
     categorical = ['gender', 'entry', 'entry_code', 'ica', 'ttt', 'ica_therapy', 'fever', 'o2_clinic', 'o2', 'hta', 'hct', 'tabagisme', 'etOH', 'diabete', 'headache', 'instable', 'vasospasme', 'ivh', 'outcome']
@@ -308,8 +313,8 @@ def gen_sphn_kg(num_patients, timeOpt, data_path: Path):
 
     if timeOpt == 'NT':
         print(f"KG length = {len(kg)} RDF triples")
-        kg.serialize(f"data/sphn_pc_NT_{num_patients}.nt", format="ntriples")
-        joblib.dump(df["outcome"].astype(int).to_list(), f"data/outcomes_sphn_pc_NT_{num_patients}.joblib")
+        kg.serialize(f"{output_graph_dir}/sphn_pc_NT_{num_patients}.nt", format="ntriples", encoding="UTF-8")
+        joblib.dump(df["outcome"].astype(int).to_list(), f"{output_labels_dir}/outcomes_sphn_pc_NT_{num_patients}.joblib")
     elif timeOpt == 'TR':
         # Delete timestamps.
         delete_ts_query = """
@@ -323,8 +328,8 @@ def gen_sphn_kg(num_patients, timeOpt, data_path: Path):
         """
         kg.update(delete_ts_query)
         print(f"KG length = {len(kg)} RDF triples")
-        kg.serialize(f"data/sphn_pc_TR_{num_patients}.nt", format="ntriples")
-        joblib.dump(df["outcome"].astype(int).to_list(), f"data/outcomes_sphn_pc_TR_{num_patients}.joblib")
+        kg.serialize(f"{output_graph_dir}/sphn_pc_{num_patients}/sphn_pc_TR_{num_patients}.nt", format="ntriples", encoding="UTF-8")
+        joblib.dump(df["outcome"].astype(int).to_list(), f"{output_labels_dir}/outcomes_sphn_pc_TR_{num_patients}.joblib")
     elif timeOpt == 'TS':
         # Delete time relations.
         delete_tr_query = """
@@ -336,8 +341,8 @@ def gen_sphn_kg(num_patients, timeOpt, data_path: Path):
         """
         kg.update(delete_tr_query)
         print(f"KG length = {len(kg)} RDF triples")
-        kg.serialize(f"data/sphn_pc_TS_{num_patients}.nt", format="ntriples")
-        joblib.dump(df["outcome"].astype(int).to_list(), f"data/outcomes_sphn_pc_TS_{num_patients}.joblib")
+        kg.serialize(f"{output_graph_dir}/sphn_pc_TS_{num_patients}.nt", format="ntriples", encoding="UTF-8")
+        joblib.dump(df["outcome"].astype(int).to_list(), f"{output_labels_dir}/outcomes_sphn_pc_TS_{num_patients}.joblib")
     elif timeOpt == 'TS_TR':
-        kg.serialize(f"data/sphn_pc_TS_TR_{num_patients}.nt", format="nt")
-        joblib.dump(df["outcome"].astype(int).to_list(), f"data/outcomes_sphn_pc_TS_TR_{num_patients}.joblib")
+        kg.serialize(f"{output_graph_dir}/sphn_pc_TS_TR_{num_patients}.nt", format="nt", encoding="UTF-8")
+        joblib.dump(df["outcome"].astype(int).to_list(), f"{output_labels_dir}/outcomes_sphn_pc_TS_TR_{num_patients}.joblib")
