@@ -8,13 +8,14 @@ from configs.loader import LoaderConfig
 class NeurovascConfig:
     def __init__(
         self,
-        source_dir: Path = Path("data/neurovasc"),
+        source_dir: Path = Path("data"),
+        name = "neurovasc",
         task="stroke_outcome",
         processed_dir: Path = Path("processed_data"),
         num_patients=10000,
     ):
         
-        self.name: str = "neurovasc"
+        self.name = name
         self.task: str = task
         self.num_patients: int = num_patients
 

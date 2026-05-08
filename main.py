@@ -27,7 +27,7 @@ def main():
                 folds=5,
                 dataset_samples=1,  # exp["num_of_samples"],
                 time_option="TS",
-                include_text=False,
+                include_text=True,
                 data_mode=MEDSFormat(),
                 model_type=GCNNet,
                 # enrich_events = MIMIC_ENHANCER_DICT,

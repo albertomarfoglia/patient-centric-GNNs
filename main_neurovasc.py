@@ -17,26 +17,32 @@ def main():
 
     exp_cfg = ExperimentConfig(
         folds=5,
-        dataset_samples=1,  # exp["num_of_samples"],
+        dataset_samples=1,
         time_option="TS",
         include_text=False,
         data_mode=SPHNFormat(),
-        model_type=RGCNNet.__name__
-        # enrich_events = MIMIC_ENHANCER_DICT,
+        model_type=RGCNNet
     )
 
+    # NEUROVASC V1
     # dataset_cfg = NeurovascConfig(
     #     source_dir=Path("/home/ubuntu/workspace/meds-to-owl-examples/exports"),
     # )
 
-    dataset_cfg = NeurovascConfig(
-        source_dir=Path("data"),
-    )
+    # gen_sphn_kg(
+    #     dataset_cfg.num_patients,
+    #     exp_cfg.time_option,
+    #     data_path="https://raw.githubusercontent.com/TeamHeKA/neurovasc/refs/heads/main/exp/data/syn_data_10000.csv",
+    # )
 
-    gen_sphn_kg(
-        dataset_cfg.num_patients,
-        exp_cfg.time_option,
-        data_path="https://raw.githubusercontent.com/TeamHeKA/neurovasc/refs/heads/main/exp/data/syn_data_10000.csv",
+    # NEUROVASC V2
+    dataset_cfg = NeurovascConfig(
+        #source_dir=Path("data"),
+        #num_patients=10000,
+        source_dir=Path("../meds-to-owl-examples/exports"),
+        num_patients=11000,
+        name="neurovasc_v2",
+        task="stroke-outcome2"
     )
 
     run_preprocess_pipeline(
