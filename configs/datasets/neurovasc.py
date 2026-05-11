@@ -12,6 +12,7 @@ class NeurovascConfig:
         name = "neurovasc",
         task="stroke_outcome",
         processed_dir: Path = Path("processed_data"),
+        classes = ["B2H", "REHAB", "DEATH"],
         num_patients=10000,
     ):
         
@@ -19,8 +20,7 @@ class NeurovascConfig:
         self.task: str = task
         self.num_patients: int = num_patients
 
-        self.classes = ["B2H", "REHAB", "DEATH"]
-
+        self.classes = classes
         self.source_dir: Path = source_dir
         self.processed_dir: Path = processed_dir / task
 

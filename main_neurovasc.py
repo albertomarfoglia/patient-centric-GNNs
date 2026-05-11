@@ -21,6 +21,7 @@ def main():
         time_option="TS",
         include_text=False,
         data_mode=SPHNFormat(),
+        #data_mode=MEDSFormat(),
         model_type=RGCNNet
     )
 
@@ -37,12 +38,11 @@ def main():
 
     # NEUROVASC V2
     dataset_cfg = NeurovascConfig(
-        #source_dir=Path("data"),
-        #num_patients=10000,
         source_dir=Path("../meds-to-owl-examples/exports"),
-        num_patients=11000,
+        num_patients=498,
         name="neurovasc_v2",
-        task="stroke-outcome2"
+        task="stroke-outcome2",
+        classes=["DOMICILE", "REEDUC_TRANSFERT", "DECES"],
     )
 
     run_preprocess_pipeline(

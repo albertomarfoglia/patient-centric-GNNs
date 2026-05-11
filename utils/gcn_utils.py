@@ -146,12 +146,17 @@ def mean_std_metrics(
                 metrics_std.loc["WEIGHTED", "ACCURACY"],
             ),
             mean_std_str(
-                metrics_mean.loc["WEIGHTED", "AUC"], metrics_std.loc["WEIGHTED", "AUC"]
+                metrics_mean.loc["WEIGHTED", "AUC"],
+                metrics_std.loc["WEIGHTED", "AUC"]
+            ),
+            mean_std_str(
+                metrics_mean.loc["WEIGHTED", "AP"],
+                metrics_std.loc["WEIGHTED", "AP"]
             ),
         ]
     )
 
-    return pd.DataFrame([f1_line], columns=(headers + ["Accuracy", "AUC"]))
+    return pd.DataFrame([f1_line], columns=(headers + ["Accuracy", "AUC", "AP"]))
 
 
 def store_metrics(metrics: dict, classes: list[str], fold, out_path: str):
