@@ -21,6 +21,8 @@ class GCNNet(torch.nn.Module):
 
         self.num_proj = Linear(1, embed_dim)
 
+        self.node_proj = Linear(embed_dim, hidden_dim)
+
         if self.include_text_features:
             self.text_projection = Linear(384, embed_dim)
 
