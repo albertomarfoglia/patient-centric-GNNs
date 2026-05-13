@@ -224,6 +224,7 @@ def preprocess_sphn_kg(
             elif (
                 r == "http://sphn.org/hasStartDateTime"
                 or r == "http://sphn.org/hasDeterminationDateTime"
+                or r == "http://sphn.org/hasRecordDateTime"
             ) and ecfg.time_option == "TS":
                 try:
                     dt = datetime.strptime(t, "%Y-%m-%dT%H:%M:%S")

@@ -103,10 +103,22 @@ def _compute_multi_classification(model, data, optimizer):
     train_loss.backward()
     optimizer.step()
     model.eval()
-    
+
+    # from sklearn.utils.class_weight import compute_class_weight
+
+    # classes = np.unique(data.train_y.cpu().numpy())
+
+    # weights = compute_class_weight(
+    #     class_weight="balanced",
+    #     classes=classes,
+    #     y=data.train_y.cpu().numpy()
+    # )
+
+    # class_weights = torch.tensor(weights, dtype=torch.float).to(get_device())
+
     with torch.no_grad():
         out = model(data)
-        val_loss = torch.nn.functional.nll_loss(out[data.valid_idx], data.valid_y)
+        val_loss = torch.nn.functional.nll_loss(out[data.valid_idx], data.valid_y) #, weight=class_weights)
         pred = out.argmax(dim=-1)
 
     return val_loss, pred

@@ -30,7 +30,7 @@ def main():
 
     dataset_cfg = NeurovascConfig(
         source_dir=Path("../meds-to-owl-examples/exports"),
-        num_patients=498,
+        num_patients=503,
         name="neurovasc_v2",
         task="stroke-outcome2",
         classes=["DOMICILE", "REEDUC_TRANSFERT", "DECES"],
@@ -45,7 +45,7 @@ def main():
                 folds=5,
                 dataset_samples=1,
                 time_option="TS",
-                include_text=True,
+                include_text=False,
                 data_mode=format_cfg,
                 model_type=model_cls,
             )
