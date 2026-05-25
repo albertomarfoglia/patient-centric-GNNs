@@ -36,7 +36,7 @@ class GCNNet(torch.nn.Module):
         self.act2 = PReLU(hidden_dim)
 
     def forward(self, data):
-        num_x = self.num_proj(data.num_x * data.num_mask)
+        num_x = self.num_proj(data.num_x * data.num_mask.view(-1, 1))
         num_x = self.input_activation(num_x)
 
         h = num_x

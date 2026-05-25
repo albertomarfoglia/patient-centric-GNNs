@@ -6,30 +6,34 @@ from configs.formats.MEDSFormat import MEDSFormat
 from configs.model import ModelConfig
 from configs.experiment import ExperimentConfig
 
-from generation.sphn_generation import gen_sphn_kg
+from models.multiclass.gatn import GATNet
+from models.multiclass.rgat import RGATNet
 from models.multiclass.rgcn import RGCNNet
 from models.multiclass.gcn import GCNNet
 from pipelines.preprocess_pipeline import run_preprocess_pipeline
 from pipelines.train_pipeline import run_train_pipeline
+from utils.ontologies import NEUROVASC_ENHANCER_DICT
 
 
 MODEL_GRID = {
+    #"rgatnet": RGATNet,
+    #"gatnet": GATNet,
     "rgcnet": RGCNNet,
-    "gcnet": GCNNet,
+    #"gcnet": GCNNet,
 }
 
 FORMAT_GRID = {
-    "sphn": SPHNFormat(),
+    #"sphn": SPHNFormat(),
     "meds": MEDSFormat(),
 }
 
 
 def main():
 
-    model_cfg = ModelConfig()
+    model_cfg = ModelConfig(embed_dim=32, hidden_dim=32)
 
     dataset_cfg = NeurovascConfig(
-        source_dir=Path("../meds-to-owl-examples/exports"),
+        source_dir=Path("../meds-to-owl-examples/NEUROVASC2/exports"),
         num_patients=503,
         name="neurovasc_v2",
         task="stroke-outcome2",
@@ -42,12 +46,13 @@ def main():
             print(f"\n=== Running {model_name} with {format_name} ===\n")
 
             exp_cfg = ExperimentConfig(
-                folds=5,
+                folds=10,
                 dataset_samples=1,
                 time_option="TS",
                 include_text=False,
                 data_mode=format_cfg,
                 model_type=model_cls,
+                enrich_events=NEUROVASC_ENHANCER_DICT
             )
 
             run_preprocess_pipeline(

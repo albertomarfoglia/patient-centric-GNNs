@@ -7,14 +7,16 @@ from configs.loader import LoaderConfig
 class MimicConfig:
     def __init__(
         self,
+        num_patients,
         source_dir: Path = Path("data/mimic"),
         task="inhospital_mortality",
         processed_dir: Path = Path("processed_data"),
-        num_patients=1000,
+        external_codes=Path("MEDS_cohort/mimic_external_codes")
     ):
         self.name: str = "mimic"
         self.task: str = task
         self.num_patients: int = num_patients
+        self.external_codes = external_codes
 
         self.classes = ["FALSE", "TRUE"]
 
@@ -23,11 +25,9 @@ class MimicConfig:
 
     def generate(self, idx: int, exp: ExperimentConfig) -> LoaderConfig:
         sample_processed_dir = Path(f"{self.processed_dir}/{idx}")
-        sample_processed_dir.mkdir(parents=True, exist_ok=True)
         sample_result_dir = Path(
             f"results/{exp.data_mode.data_model}/{exp.model_type.__name__}/{self.task}/{idx}"
         )
-        sample_result_dir.mkdir(parents=True, exist_ok=True)
         return LoaderConfig(
             entities_path=sample_processed_dir
             / f"{exp.data_mode.data_model}_{exp.time_option}_entities_{self.num_patients}.tsv",
@@ -42,12 +42,14 @@ class MimicConfig:
             classes=self.classes,
             dataset_dir=self.source_dir
             / self.task
-            / "graph"
+            # / "graph"
             / f"{exp.data_mode.data_model}_{self.num_patients}_{idx}",
             outcomes_path=self.source_dir
             / self.task
-            / "graph"
+            # / "graph"
             / "labels"
             / f"outcomes_{exp.data_mode.data_model}_{exp.time_option}_{self.num_patients}_{idx}.joblib",
             results_dir=sample_result_dir,
+            onto_codes=self.source_dir / self.task / f"meds/{idx}" / self.external_codes,
+            sample_processed_dir=sample_processed_dir
         )

@@ -28,15 +28,22 @@ class RGCNNet(torch.nn.Module):
 
         self.input_activation = PReLU(embed_dim)
 
-        self.conv1 = RGCNConv(embed_dim, hidden_dim, num_relations, num_bases=8)
-        self.conv2 = RGCNConv(hidden_dim, hidden_dim, num_relations, num_bases=8)
-        self.conv3 = RGCNConv(hidden_dim, num_classes, num_relations, num_bases=8)
+        self.conv1 = RGCNConv(embed_dim, hidden_dim, num_relations, num_bases=12)
+        # self.conv1 = RGATConv(
+        #     in_channels=embed_dim,
+        #     out_channels=hidden_dim * heads,
+        #     heads=heads,
+        #     num_relations=num_relations,
+        #     num_bases=16,
+        # )
+        self.conv2 = RGCNConv(hidden_dim, hidden_dim, num_relations, num_bases=12)
+        self.conv3 = RGCNConv(hidden_dim, num_classes, num_relations, num_bases=12)
 
         self.act1 = PReLU(hidden_dim)
         self.act2 = PReLU(hidden_dim)
 
     def forward(self, data):
-        num_x = self.num_proj(data.num_x * data.num_mask)
+        num_x = self.num_proj(data.num_x * data.num_mask.view(-1, 1))
         num_x = self.input_activation(num_x)
 
         h = num_x

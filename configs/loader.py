@@ -13,6 +13,8 @@ class LoaderConfig:
         numeric_values_path: Path,
         classes: List[str],
         results_dir: Path,
+        onto_codes: Path,
+        sample_processed_dir: Path,
         text_values_path: Path | None = None,
         data_mode: Literal["meds", "sphn_pc"] = "meds",
     ):
@@ -28,17 +30,11 @@ class LoaderConfig:
         self.dataset_dir = dataset_dir
         self.outcomes_path = outcomes_path
         self.results_dir = results_dir
+        self.onto_codes = onto_codes
+        self.sample_processed_dir = sample_processed_dir
 
         os.makedirs(self.results_dir, exist_ok=True)
         os.makedirs(f"{self.results_dir}/cm", exist_ok=True)
 
-    # def dataset_dir(self, n, idx):
-    #     return self.export_dir / self.task / f"meds_{n}_{idx}"
-
-    # def outcomes_path(self, n, idx):
-    #     return (
-    #         self.export_dir
-    #         / self.task
-    #         / "labels"
-    #         / f"outcomes_meds_TS_{n}_{idx}.joblib"
-    #     )
+        self.sample_processed_dir.mkdir(parents=True, exist_ok=True)
+        self.results_dir.mkdir(parents=True, exist_ok=True)

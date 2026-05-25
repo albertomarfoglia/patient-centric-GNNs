@@ -14,7 +14,7 @@ from sklearn.preprocessing import QuantileTransformer
 
 from configs.loader import LoaderConfig
 from configs.experiment import ExperimentConfig
-from utils.ontologies import NS_ONTO
+from utils.ontologies import NS_CODE, NS_ONTO
 
 NUMERIC_RELATION = f"<{NS_ONTO}numericValue>"
 TEXT_RELATION = f"<{NS_ONTO}textValue>"
@@ -92,9 +92,9 @@ def preprocess_meds_kg(
             # swap subject/event
             if r == str(NS_ONTO["hasSubject"]):
                 h, t = t, h
-
-            if r == str(NS_ONTO["hasCode"]) and (code := ecfg.enrich_events.get(t)):
-                r = code
+                event_code = NS_CODE["_".join(t.split("_")[2:])]
+                if code := ecfg.enrich_events.get(event_code):
+                    r = code
 
             # ---- Entity mapping (dynamic)
             if h not in ent_to_id:
@@ -123,7 +123,6 @@ def preprocess_meds_kg(
                 try:
                     # numeric_values[h_id] = float(t)
                     # continue
-
                     numeric_values[t_id] = float(t)
                 except Exception:
                     print("An exception is occured during numeric conversion")
@@ -137,14 +136,12 @@ def preprocess_meds_kg(
                     # numeric_values[h_id] = dt.timestamp()
                     # time_value_ids.append(h_id)
                     # continue
-
                     numeric_values[t_id] = dt.timestamp()
                     time_value_ids.append(t_id)
                 except Exception:
                     print("An exception is occured during timestamp conversion")
                     # numeric_values[h_id] = np.nan
                     # continue
-
                     numeric_values[t_id] = np.nan
 
             elif (r == str(NS_ONTO["textValue"])) and ecfg.include_text:
@@ -238,7 +235,6 @@ def preprocess_sphn_kg(
                 text_values[t_id] = t
 
             out.write(f"{h_id}\t{r_id}\t{t_id}\n")
-
 
     _store_arrays(
         dcfg,

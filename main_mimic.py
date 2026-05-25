@@ -6,9 +6,10 @@ from configs.model import ModelConfig
 from configs.experiment import ExperimentConfig
 import yaml
 
-from models.binary.gcn import GCNNet
+from models.binary.rgcn import RGCNet
 from pipelines.preprocess_pipeline import run_preprocess_pipeline
 from pipelines.train_pipeline import run_train_pipeline
+from utils.ontologies import MIMIC_ENHANCER_DICT
 
 
 def main():
@@ -24,17 +25,17 @@ def main():
             print(f"Running task: {exp['task']}")
 
             exp_cfg = ExperimentConfig(
-                folds=5,
-                dataset_samples=1,  # exp["num_of_samples"],
+                folds=10,
+                dataset_samples=exp["num_of_samples"],
                 time_option="TS",
-                include_text=True,
+                include_text=False,
                 data_mode=MEDSFormat(),
-                model_type=GCNNet,
-                # enrich_events = MIMIC_ENHANCER_DICT,
+                model_type=RGCNet,
+                enrich_events = MIMIC_ENHANCER_DICT,
             )
 
             dataset_cfg = MimicConfig(
-                source_dir=Path("/home/ubuntu/workspace/meds-to-owl-examples/exports"),
+                source_dir=Path("../meds-to-owl-examples/MIMIC/exports"),
                 num_patients=exp["sample_size"],
                 task=exp["task"],
             )

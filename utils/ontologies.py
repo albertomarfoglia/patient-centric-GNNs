@@ -1,7 +1,9 @@
 from pathlib import Path
 
-import numpy as np
-from rdflib import Graph, Namespace, URIRef
+from rdflib import Graph, Namespace
+import zipfile
+
+import polars as pl
 
 from tqdm import tqdm
 from io import BytesIO
@@ -45,29 +47,74 @@ EXTERNAL_ONTOLOGIES = {
 }
 
 
-def load_mimic_onto_concepts(onto_code: str):
-    onto_uri = Namespace(f"{BIOPORTAL_URI}/{onto_code}/")
-    file = Path("./generation/mimic_external_codes") / f"{onto_code}_codes.npy"
+def load_mimic_onto_concepts(onto_code: str, external_path: Path):
+    onto_uri = Namespace(f"{BIOPORTAL_URI}/")
+    file = Path(external_path) / f"{onto_code}_codes.parquet"
     if file.exists():
-        codes = np.load(
-            Path("./generation/mimic_external_codes") / f"{onto_code}_codes.npy",
-            allow_pickle=True,
-        )
+        # codes = np.load(
+        #     Path(external_path) / f"{onto_code}_codes.npy",
+        #     allow_pickle=True,
+        # )
+        codes = pl.read_parquet(file).to_series()
         return list(f"<{c}>" for c in [onto_uri[code] for code in codes])
     return []
 
 
-NEUROVASC_ENHANCER_DICT: dict[URIRef, URIRef] = {
-    NS_CODE.AGE_Years: NS_ONTO.hasAge,
-    NS_CODE.GENDER_0: NS_ONTO.hasGender,
-    NS_CODE.GENDER_1: NS_ONTO.hasGender,
+NEUROVASC_ENHANCER_DICT: dict[str, str] = {
+    NS_CODE.Age_Years: NS_ONTO.hasAge,
+    NS_CODE.Gender_M: NS_ONTO.hasMaleGender,
+    NS_CODE.Gender_F: NS_ONTO.hasFemaleGender,
+    NS_CODE.Number_of_Visited_Departments: NS_ONTO.hasVisitedDept,
+    NS_CODE.Length_of_Stay: NS_ONTO.hasLengthOfStay,
+    NS_CODE.Glasgow_Coma_Scale: NS_ONTO.hasGlasgowComaScale,
+    NS_CODE.WFNS_Score: NS_ONTO.hasWFNSScore,
+    NS_CODE.Fisher_Score: NS_ONTO.hasFisherScore,
+    NS_CODE.Admission_Department_REA: NS_ONTO.hasAdmissionDepartment,
+    NS_CODE.External_Ventricular_Drain_Details_True: NS_CODE.hasExternalVentricular,
+    NS_CODE.Weight_Kg: NS_CODE.hasWeight,
+    NS_CODE.Smoking_Kg: NS_CODE.hasSmoking,
+    # NS_CODE.Hydrocephalus_true: NS_CODE.hasHydrocephalus,
+    # NS_CODE.Norepinephrine: NS_CODE.hasNorepinephrine,
+    # NS_CODE.Vasospasm_false: NS_CODE.hasVasospasm,
+    # NS_CODE.Vasospasm_UNK: NS_CODE.hasVasospasm_UNK,
+    # NS_CODE.Seizure_true: NS_CODE.hasSeizure
     # **{ URIRef(NS_CODE + f"ATC_{atc}"): NS_ONTO.hasAdministration for atc in _NEUROVASC_ATC_CODES },
 }
 
 MIMIC_ENHANCER_DICT: dict[str, str] = {
-    str(NS_CODE.MEDS_BIRTH): NS_ONTO.hasBirth,
-    str(NS_CODE.GENDER_M): NS_ONTO.hasMale,
-    str(NS_CODE.GENDER_F): NS_ONTO.hasFemale,
+    #NS_CODE.MEDS_BIRTH: NS_ONTO.hasBirth,
+    NS_CODE.GENDER_M: NS_ONTO.hasMale,
+    NS_CODE.GENDER_F: NS_ONTO.hasFemale,
+    #NS_CODE.TRANSFER_TO_discharge_UNKNOWN: NS_ONTO.hasUNKDischarge,
+    NS_CODE["LAB_51277_%_max"]: NS_ONTO.hasLAB_51277_max,
+    NS_CODE["LAB_51277_%_min"]: NS_ONTO.hasLAB_51277_min,
+    NS_CODE[
+        "MEDICATION_START_Acetaminophen"
+    ]: NS_ONTO.MEDICATION_START_Acetaminophen,
+
+    NS_CODE["LAB_51006_mg/dL_max"]: NS_ONTO["LAB_51006_mg/dL_max"],
+    NS_CODE["LAB_225624_mg/dL_max"]: NS_ONTO["LAB_225624_mg/dL_max"],
+    NS_CODE["LAB_50882_mEq/L_max"]: NS_ONTO["LAB_50882_mEq/L_max"],
+
+    NS_CODE["MEDICATION_START_UNK"]: NS_ONTO["MEDICATION_START_UNK"],
+    NS_CODE["LAB_50954_IU/L_max"]: NS_ONTO["LAB_50954_IU/L_max"],
+    # NS_CODE["MEDICATION_START_Docusate Sodium"]: NS_ONTO["MEDICATION_START_Docusate_Sodium"],
+    # NS_CODE["MEDICATION_START_Lorazepam"]: NS_ONTO["MEDICATION_START_Lorazepam"],
+    # NS_CODE["LAB_51265_K/uL_max"]: NS_ONTO["LAB_51265_K/uL_max"],
+    # NS_CODE["LAB_51265_K/uL_min"]: NS_ONTO["LAB_51265_K/uL_min"],
+    # NS_CODE["LAB_51222_g_dL_min"]: NS_ONTO.LAB_51222_g_dL_min,
+    # NS_CODE["DIAGNOSIS_ICD_9_4019"]: NS_ONTO.DIAGNOSIS_ICD_9_4019,
+    # NS_CODE["LAB_50868_mEq_L_max"]: NS_ONTO.LAB_50868_mEq_L_max,
+    # NS_CODE["LAB_50971_mEq_L_max"]: NS_ONTO.LAB_50971_mEq_L_max,
+    # NS_CODE["LAB_50970_mg_dL_min"]: NS_ONTO.LAB_50970_mg_dL_min,
+    # NS_CODE["LAB_50983_mEq_L_min"]: NS_ONTO.LAB_50983_mEq_L_min,
+    # NS_CODE["LAB_50960_mg_dL_max"]: NS_ONTO.LAB_50960_mg_dL_max,
+    # NS_CODE.HOSPITAL_DISCHARGE_UNK: NS_ONTO.hasHospitalDischargeUNK,
+    # NS_CODE.TRANSFER_TO_admit_Hematology_Oncology: NS_ONTO.TRANSFER_TO_admit_Hematology_Oncology,
+    # NS_CODE.MEDICATION_START_Acetaminophen: NS_ONTO.hasDocusate,
+    # NS_CODE.MEDICATION_START_Lorazepam: NS_ONTO.hasLorazepam,
+    # NS_CODE["LAB_50902_mEq_L_min"]: NS_ONTO.LAB_50902_mEq_L_min,
+    # NS_CODE["LAB_51301_K_uL_min"]: NS_ONTO.LAB_51301_K_uL_min,
 }
 
 
@@ -92,23 +139,23 @@ def ancestors_query(concepts: list[str]):
 """
 
 
-def load_ontolgy_ancestors(
-    output_path, concepts: list[str], ontology_url: str, apikey=""
-) -> Graph:
-    if Path(output_path).exists():
-        print("Start ontology parsing..")
-        return Graph().parse(source=output_path, format="ttl")
+# def load_ontology_ancestors(
+#     output_dir, childs_concepts: list[str], onto_url: str, apikey=""
+# ) -> Graph:
+#     if Path(output_dir).exists():
+#         print("Start ontology parsing..")
+#         return Graph().parse(source=output_dir, format="ttl")
 
-    g = (
-        Graph()
-        .parse(source=f"{ontology_url}?apikey={apikey}", format="ttl")
-        .query(ancestors_query(concepts))
-        .graph
-    )
-    if g is None:
-        raise Exception("Something went wrong during ontology parsing.")
-    g.serialize(destination=output_path, format="ttl")  # cache
-    return g
+#     g = (
+#         Graph()
+#         .parse(source=f"{onto_url}?apikey={apikey}", format="ttl")
+#         .query(ancestors_query(childs_concepts))
+#         .graph
+#     )
+#     if g is None:
+#         raise Exception("Something went wrong during ontology parsing.")
+#     g.serialize(destination=output_dir, format="ttl")  # cache
+#     return g
 
 
 def to_query(concept: str) -> str:
@@ -129,22 +176,53 @@ def to_query(concept: str) -> str:
 """
 
 
-def download_ontology_with_progress(ontology_url, apikey, desc="Downloading"):
+def download_ontology_with_progress(
+    ontology_url, apikey, output_path, desc="Downloading"
+):
     url = f"{ontology_url}?apikey={apikey}"
 
-    # Start the request with streaming
     with requests.get(url, stream=True) as r:
         r.raise_for_status()
         total_size = int(r.headers.get("content-length", 0))
         buffer = BytesIO()
+
         with tqdm(total=total_size, unit="B", unit_scale=True, desc=desc) as pbar:
             for chunk in r.iter_content(chunk_size=8192):
                 buffer.write(chunk)
                 pbar.update(len(chunk))
 
-    buffer.seek(0)  # Reset pointer for reading
+    raw = buffer.getvalue()
+
+    # -----------------------------
+    # Handle ZIP archives
+    # -----------------------------
+    if zipfile.is_zipfile(BytesIO(raw)):
+        with zipfile.ZipFile(BytesIO(raw)) as zf:
+            # Find first .ttl file
+            ttl_files = [f for f in zf.namelist() if f.endswith(".ttl")]
+
+            if not ttl_files:
+                raise ValueError("ZIP archive contains no .ttl file")
+
+            with zf.open(ttl_files[0]) as f:
+                text = f.read().decode("utf-8")
+
+    else:
+        # -----------------------------
+        # Handle gzip if needed
+        # -----------------------------
+        try:
+            raw = gzip.decompress(raw)
+        except OSError:
+            pass
+
+        text = raw.decode("utf-8")
+
+    # Parse RDF
     g = Graph()
-    g.parse(source=buffer, format="ttl")
+    g.parse(data=text, format="ttl")
+    g.serialize(output_path, format="nt")
+
     return g
 
 
@@ -155,28 +233,32 @@ def load_ontology_ancestors_stream(
     output_dir: Path,
     childs_concepts: list[str],
 ) -> Path | None:
-    output_file = output_dir / f"{onto_code}_graph.nt.gz"
-    if output_file.exists():
-        print(f"Loading cached {onto_code} ontology from {output_file}.")
-        return output_file
-
     if len(childs_concepts) == 0:
         print(f"Skip {onto_code} ontology loading.")
         return
 
-    ontology_graph = download_ontology_with_progress(
-        onto_url, apikey, desc=f"Downloading {onto_code}"
-    )
+    output_file = output_dir / f"{onto_code}_graph.nt"
+    if output_file.exists():
+        print(f"Loading cached filtered {onto_code} ontology from {output_file}.")
+        return
 
-    with gzip.open(output_file, "wt", encoding="utf-8") as f:
+    onto_file = Path("processed_data") / f"full_{onto_code}_graph.nt"
+    if onto_file.exists():
+        print(f"Loading cached {onto_code} ontology from {onto_file}.")
+        ontology_graph = Graph().parse(onto_file, format="nt")
+    else:
+        ontology_graph = download_ontology_with_progress(
+            onto_url, apikey, output_path=onto_file, desc=f"Downloading {onto_code}"
+        )
+        print(f"Saved ontology graph to {onto_file}")
+
+    with open(output_file, "w", encoding="utf-8") as f:
         for concept in tqdm(childs_concepts, desc=f"Processing {onto_code}'s concepts"):
             subgraph = ontology_graph.query(query_object=to_query(concept)).graph
 
             if subgraph is not None:
                 for triple in subgraph:
-                    f.write(
-                        f"{triple[0].n3()} {triple[1].n3()} {triple[2].n3()} .\n"  # type: ignore
-                    )
+                    f.write(f"{triple[0].n3()} {triple[1].n3()} {triple[2].n3()} .\n")
 
 
 # with open(output_file, "wb") as f:

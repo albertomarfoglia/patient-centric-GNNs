@@ -2,7 +2,6 @@
 
 from models.node_pred_gnn import run_gnn
 
-
 def run_train_pipeline(
     dataset_cfg,
     model_cfg,

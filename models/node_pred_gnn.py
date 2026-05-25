@@ -124,7 +124,7 @@ def _compute_multi_classification(model, data, optimizer):
     return val_loss, pred
 
 
-def train_model(model, data, lr, wd, max_epochs=2001, patience=30, binary=False):
+def train_model(model, data, lr, wd, max_epochs=2001, patience=50, binary=False):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
     best_val_loss = float("inf")
     min_delta = 1e-4
