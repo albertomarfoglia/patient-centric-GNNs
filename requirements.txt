@@ -58,3 +58,4 @@ typer==0.24.1
 typer-slim==0.24.0
 urllib3==2.6.3
 yarl==1.22.0
+codecarbon=3.2.8

@@ -36,6 +36,7 @@ def run_preprocess_pipeline(
     dataset_cfg,
     exp_cfg: ExperimentConfig,
     bioportal_apikey: str | None = None,
+    text_model = None
 ):
     """
     Generate and preprocess KG datasets.
@@ -51,9 +52,11 @@ def run_preprocess_pipeline(
             preprocess_meds_kg(
                 dcfg=loader,
                 ecfg=exp_cfg,
+                text_model=text_model
             )
         elif exp_cfg.data_mode.data_model == "sphn_pc":
             preprocess_sphn_kg(
                 dcfg=loader,
                 ecfg=exp_cfg,
+                text_model=text_model
             )

@@ -7,8 +7,9 @@ from configs.loader import LoaderConfig
 class MimicConfig:
     def __init__(
         self,
-        num_patients,
-        source_dir: Path = Path("data/mimic"),
+        num_patients: int,
+        source_dir: Path,
+        labels_dir: Path,
         task="inhospital_mortality",
         processed_dir: Path = Path("processed_data"),
         external_codes=Path("MEDS_cohort/mimic_external_codes")
@@ -21,6 +22,7 @@ class MimicConfig:
         self.classes = ["FALSE", "TRUE"]
 
         self.source_dir: Path = source_dir
+        self.labels_dir: Path = labels_dir
         self.processed_dir: Path = processed_dir / task
 
     def generate(self, idx: int, exp: ExperimentConfig) -> LoaderConfig:
@@ -44,11 +46,11 @@ class MimicConfig:
             / self.task
             # / "graph"
             / f"{exp.data_mode.data_model}_{self.num_patients}_{idx}",
-            outcomes_path=self.source_dir
+            outcomes_path=self.labels_dir
             / self.task
             # / "graph"
             / "labels"
-            / f"outcomes_{exp.data_mode.data_model}_{exp.time_option}_{self.num_patients}_{idx}.joblib",
+            / f"outcomes_{exp.data_mode.data_model}_TS_{self.num_patients}_{idx}.joblib",
             results_dir=sample_result_dir,
             onto_codes=self.source_dir / self.task / f"meds/{idx}" / self.external_codes,
             sample_processed_dir=sample_processed_dir

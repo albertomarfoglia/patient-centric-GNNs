@@ -20,8 +20,8 @@ class RGCNet(torch.nn.Module):
 
         self.num_proj = Linear(1, embed_dim)
 
-        if self.include_text_features:
-            self.txt_proj = Linear(384, embed_dim)
+        # if self.include_text_features:
+        #     self.txt_proj = Linear(384, embed_dim)
 
         self.input_activation = PReLU(embed_dim)
 
@@ -30,9 +30,6 @@ class RGCNet(torch.nn.Module):
         self.conv3 = RGCNConv(hidden_dim, 1, num_relations, num_bases=8)
 
         self.act1 = PReLU(hidden_dim)
-        #self.act2 = PReLU(hidden_dim)
-
-        #self.act3 = PReLU(hidden_dim)
 
     def forward(self, data):
         num_mask = data.num_mask.view(-1, 1)
@@ -43,8 +40,8 @@ class RGCNet(torch.nn.Module):
 
         if self.include_text_features:
             txt_mask = data.txt_mask.view(-1, 1)
-            txt = self.txt_proj(data.txt_x * txt_mask)
-            txt = self.input_activation(txt)
+            #txt = self.txt_proj(data.txt_x * txt_mask)
+            txt = self.input_activation(data.txt_x * txt_mask)
             h = h + txt
 
         h = h + data.x

@@ -63,8 +63,6 @@ def load_data(num_patients: int, embed_dim: int, dcfg: LoaderConfig, inc_txt = F
     data.x = torch.nn.init.xavier_uniform_(
         tensor=Parameter(torch.empty(num_nodes, embed_dim)), gain=math.sqrt(2.0)
     )
-    # if vp := dcfg.text_values_path:
-    #     data.txt_x = torch.Tensor(np.load(vp))
 
     num_x = torch.Tensor(np.load(dcfg.numeric_values_path)).view(-1, 1)
 
@@ -72,8 +70,8 @@ def load_data(num_patients: int, embed_dim: int, dcfg: LoaderConfig, inc_txt = F
 
     data.num_x = torch.nan_to_num(num_x, nan=0.0)
 
-    if vp := inc_txt:
-        data.txt_x = torch.tensor(np.load(vp)) # type: ignore
+    if inc_txt:
+        data.txt_x = torch.tensor(np.load(dcfg.text_values_path)) # type: ignore
         data.txt_mask = (data.txt_x.abs().sum(dim=1) != 0).float()
 
     return data, patients, y

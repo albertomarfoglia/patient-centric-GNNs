@@ -1,6 +1,6 @@
 # pipelines/train_pipeline.py
 
-from models.node_pred_gnn import run_gnn
+from models.node_pred_gnn_parallel import run_gnn
 
 def run_train_pipeline(
     dataset_cfg,
