@@ -4,7 +4,7 @@ from sentence_transformers import SentenceTransformer
 import torch
 
 from configs.datasets.neurovasc import NeurovascConfig
-from configs.formats.SPHNFormat import SPHNFormat
+#from configs.formats.SPHNFormat import SPHNFormat
 from configs.formats.MEDSFormat import MEDSFormat
 from configs.model import ModelConfig
 from configs.experiment import ExperimentConfig
@@ -12,7 +12,7 @@ from configs.experiment import ExperimentConfig
 from models.multiclass.rgcn import RGCNNet
 from pipelines.preprocess_pipeline import run_preprocess_pipeline
 from pipelines.train_pipeline import run_train_pipeline
-from utils.ontologies import NEUROVASC_ENHANCER_DICT
+#from utils.ontologies import NEUROVASC_ENHANCER_DICT
 
 
 FORMAT_GRID = {

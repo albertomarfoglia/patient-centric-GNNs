@@ -6,8 +6,6 @@ import pandas as pd
 from utils.gcn_utils import mean_std_metrics
 
 from dataclasses import dataclass
-import pandas as pd
-
 
 @dataclass
 class SubsampleResult:
