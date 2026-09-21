@@ -65,8 +65,11 @@ def iter_nt_files_fast(input_dir: Path, external_ontos: list[Path]):
 
         while not done or queue:
             while queue:
-                yield queue.popleft()
+                injected = yield queue.popleft()
                 triple_count += 1
+
+                if injected is not None:
+                    queue.append(injected)
 
         thread.join()
 
@@ -87,8 +90,7 @@ def preprocess_meds_kg(
     time_value_ids = []
 
     enhanced_rels = set()
-
-    print(ecfg.enrich_events)
+    triples_counter = 0
 
     with open(dcfg.triples_path, "w", buffering=1024 * 1024) as out:
         iter = iter_nt_files_fast(
@@ -96,16 +98,24 @@ def preprocess_meds_kg(
         )
 
         for h, r, t in iter:
+            triples_counter = triples_counter + 1
+
             # swap subject/event
             if r == str(NS_ONTO["hasSubject"]):
                 h, t = t, h
 
+            # if r == str(NS_ONTO["hasGENDER_F"]):
+            #     iter.send((h, NS_ONTO["isInGroup"], NS_CODE["GROUP_F"]))
+            #     iter.send((NS_CODE["GROUP_F"], NS_ONTO["includes"], h))
+            # elif r == str(NS_ONTO["hasGENDER_M"]):
+            #     iter.send((h, NS_ONTO["isInGroup"], NS_CODE["GROUP_M"]))
+            #     iter.send((NS_CODE["GROUP_M"], NS_ONTO["includes"], h))
+
             if (NS_DATA["subject"] in h) and (NS_DATA["event"] in t):
                 event_code = NS_CODE["_".join(t.split("_")[2:])]
-                if code := ecfg.enrich_events.get(str(event_code)):
-                    r = code
+                if new_r := ecfg.enrich_events.get(str(event_code)):
+                    r = new_r
                     enhanced_rels.add(r)
-
 
             # ---- Entity mapping (dynamic)
             if h not in ent_to_id:
@@ -157,7 +167,7 @@ def preprocess_meds_kg(
                     continue
                     #numeric_values[t_id] = np.nan
 
-            elif (r == str(NS_ONTO["codeString"])) and ecfg.include_text:
+            elif (r == str(NS_ONTO["codeString"]) or r == str(NS_ONTO["codeDescription"])) and ecfg.include_text:
                 text_values[h_id] = t
                 continue
                 #text_values[t_id] = t
@@ -165,6 +175,7 @@ def preprocess_meds_kg(
             out.write(f"{h_id}\t{r_id}\t{t_id}\n")
 
     print("ENHANCED RELs: ", enhanced_rels)
+    print("#TRIPLES: ", triples_counter)
 
     _store_arrays(
         dcfg,
@@ -299,14 +310,19 @@ def _store_arrays(
             
             encoded = text_model.encode(
                 [text_values[i] for i in valid_idx],
-                batch_size=128,
+                batch_size=32,
                 convert_to_tensor=False,
             )
+            encoded = torch.tensor(encoded, dtype=torch.float32)
+            out = projection(encoded).detach().cpu().numpy()
 
-            for i, emb in zip(valid_idx, encoded):
-                emb_t = torch.tensor(emb, dtype=torch.float32)
-                out = projection(emb_t)
-                embeddings[i] = out.detach().cpu().numpy()
+            for i, emb in zip(valid_idx, out):
+                embeddings[i] = emb
+
+            # for i, emb in zip(valid_idx, encoded):
+            #     emb_t = torch.tensor(emb, dtype=torch.float32)
+            #     out = projection(emb_t)
+            #     embeddings[i] = out.detach().cpu().numpy()
 
         np.save(str(dcfg.text_values_path), embeddings)
 

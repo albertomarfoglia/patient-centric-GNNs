@@ -19,6 +19,15 @@ def main():
     with open("experiments.yaml", "r") as f:
         exp_config = yaml.safe_load(f)["experiments"]
 
+    text_model = None
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    text_model = SentenceTransformer(
+        "all-MiniLM-L6-v2",
+        device=device,
+        cache_folder="__pycache__",
+    )
+
     for group_name, experiments in exp_config.items():
         print(f"\n=== Group: {group_name} ===")
 
@@ -26,14 +35,14 @@ def main():
             print(f"Running task: {exp['task']}")
 
             # import json
-            # with open(f"../meds-to-owl-examples/MIMIC/exports/{exp['task']}/onto_features_dict.json", "r") as f:
+            # with open(f"../onto_features_dict.json", "r") as f:
             #     mimic_enhancer_dict = json.load(f)
 
             exp_cfg = ExperimentConfig(
                 folds=10,
                 dataset_samples=exp["num_of_samples"],
                 time_option="TS",
-                include_text=True,
+                include_text=False,
                 data_mode=MEDSFormat(),
                 model_type=RGCNet,
                 #enrich_events = MIMIC_ENHANCER_DICT,
@@ -41,21 +50,11 @@ def main():
             )
 
             dataset_cfg = MimicConfig(
-                source_dir=Path("../meds-to-owl-examples/MIMIC/exp1-full"),
-                labels_dir=Path("../meds-to-owl-examples/MIMIC/exp0-full"),
+                source_dir=Path("../meds-to-owl-examples/MIMIC/exp3-0.9"),
+                labels_dir=Path("../meds-to-owl-examples/MIMIC/exp0-0.9"),
                 num_patients=exp["sample_size"],
                 task=exp["task"],
             )
-
-            text_model = None
-            if exp_cfg.include_text:
-                device = "cuda" if torch.cuda.is_available() else "cpu"
-
-                text_model = SentenceTransformer(
-                    "all-MiniLM-L6-v2",
-                    device=device,
-                    cache_folder="__pycache__",
-                )
 
             run_preprocess_pipeline(
                 dataset_cfg,

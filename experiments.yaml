@@ -4,45 +4,45 @@ experiments:
       sample_size: 1000
       num_of_samples: 5
 
-    - task: first_48_in_hospital_mortality
-      sample_size: 1000
-      num_of_samples: 5
-
     - task: first_24_in_icu_mortality
       sample_size: 1000
-      num_of_samples: 5
+      num_of_samples: 1
+
+    - task: first_48_in_hospital_mortality
+      sample_size: 1000
+      num_of_samples: 1
 
     - task: first_48_in_icu_mortality
       sample_size: 1000
-      num_of_samples: 5
+      num_of_samples: 1
 
     - task: post_hospital_discharge_mortality_30d
       sample_size: 1000
-      num_of_samples: 5
+      num_of_samples: 1
 
     - task: post_hospital_discharge_mortality_1y
       sample_size: 1000
-      num_of_samples: 5
+      num_of_samples: 1
 
   los:
     - task: first_48_in_hospital_los
       sample_size: 1000
-      num_of_samples: 5
+      num_of_samples: 1
 
     - task: first_48_in_icu_los
       sample_size: 1000
-      num_of_samples: 5
+      num_of_samples: 1
 
   readmission:
     - task: readmission_30d
       sample_size: 1000
-      num_of_samples: 5
+      num_of_samples: 1
 
   phenotyping:
     - task: ckd_in_diabetics_within_5y_of_kidney_panel
       sample_size: 1000
-      num_of_samples: 5
+      num_of_samples: 1
 
     - task: myocardial_infarction_1-5y_phenotyping
       sample_size: 886
-      num_of_samples: 5
+      num_of_samples: 1

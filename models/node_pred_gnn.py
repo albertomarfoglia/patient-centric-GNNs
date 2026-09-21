@@ -16,13 +16,18 @@ from utils.gcn_utils import (
     mean_std_metrics,
     evaluate_model,
 )
+from codecarbon import EmissionsTracker
+import time
+
+from utils.metrics import SubsampleResult
 
 ROOT_URI_MAP = {
     "meds": "https://teamheka.github.io/meds-data/subject/",
     "sphn_pc": "http://nvasc.org/synth_patient_",
 }
 
-def load_data(num_patients: int, embed_dim: int, dcfg: LoaderConfig, inc_txt = False):
+
+def load_data(num_patients: int, embed_dim: int, dcfg: LoaderConfig, inc_txt=False):
     entity_df = pd.read_csv(
         dcfg.entities_path,
         sep="\t",
@@ -71,10 +76,11 @@ def load_data(num_patients: int, embed_dim: int, dcfg: LoaderConfig, inc_txt = F
     data.num_x = torch.nan_to_num(num_x, nan=0.0)
 
     if inc_txt:
-        data.txt_x = torch.tensor(np.load(dcfg.text_values_path)) # type: ignore
+        data.txt_x = torch.tensor(np.load(dcfg.text_values_path))  # type: ignore
         data.txt_mask = (data.txt_x.abs().sum(dim=1) != 0).float()
 
     return data, patients, y
+
 
 def _compute_binary_classification(model, data, optimizer):
     out = model(data)
@@ -84,20 +90,20 @@ def _compute_binary_classification(model, data, optimizer):
     train_loss.backward()
     optimizer.step()
     model.eval()
-    
+
     with torch.no_grad():
         out = model(data)
 
         val_loss = criterion(out[data.valid_idx], data.valid_y.float())
         probs = torch.sigmoid(out)
         pred = (probs > 0.5).long()
-        
+
     return val_loss, pred
 
 
 def _compute_multi_classification(model, data, optimizer):
     out = model(data)
-    train_loss = torch.nn.functional.nll_loss(out[data.train_idx], data.train_y) 
+    train_loss = torch.nn.functional.nll_loss(out[data.train_idx], data.train_y)
     train_loss.backward()
     optimizer.step()
     model.eval()
@@ -116,7 +122,9 @@ def _compute_multi_classification(model, data, optimizer):
 
     with torch.no_grad():
         out = model(data)
-        val_loss = torch.nn.functional.nll_loss(out[data.valid_idx], data.valid_y) #, weight=class_weights)
+        val_loss = torch.nn.functional.nll_loss(
+            out[data.valid_idx], data.valid_y
+        )  # , weight=class_weights)
         pred = out.argmax(dim=-1)
 
     return val_loss, pred
@@ -141,7 +149,7 @@ def train_model(model, data, lr, wd, max_epochs=2001, patience=50, binary=False)
         train_acc = float((pred[data.train_idx] == data.train_y).float().mean())
         val_acc = float((pred[data.valid_idx] == data.valid_y).float().mean())
         test_acc = float((pred[data.test_idx] == data.test_y).float().mean())
-        
+
         # ---- early stopping logic ----
         if val_loss + min_delta < best_val_loss:
             best_val_loss = val_loss
@@ -152,7 +160,7 @@ def train_model(model, data, lr, wd, max_epochs=2001, patience=50, binary=False)
 
         log(
             Epoch=epoch,
-            #TrainLoss=train_loss.item(),
+            # TrainLoss=train_loss.item(),
             ValLoss=val_loss.item(),
             Train=train_acc,
             Val=val_acc,
@@ -166,41 +174,31 @@ def train_model(model, data, lr, wd, max_epochs=2001, patience=50, binary=False)
     model.load_state_dict(torch.load(data.model_path, weights_only=True))
     return model
 
+
 def run_gnn(
     num_patients,
     mcfg: ModelConfig,
     loader: LoaderConfig,
     excfg: ExperimentConfig,
-):
+) -> SubsampleResult:
+
     result_dir = loader.results_dir
 
+    # --------------------------------------------------------
     # Load data
+    # --------------------------------------------------------
     data, patients, y = load_data(
         num_patients,
         mcfg.embed_dim,
         loader,
-        excfg.include_text
+        excfg.include_text,
     )
 
     data.num_patients = num_patients
 
-    # Save hyperparameters
-    hyper_param = pd.DataFrame(
-        {
-            "DROPOUT": [mcfg.dropout],
-            "LEARNING_RATE": [mcfg.lr],
-            "WEIGHT_DECAY": [mcfg.weight_decay],
-            "EMBED_DIM": [mcfg.embed_dim],
-            "HIDDEN_DIM": [mcfg.hidden_dim],
-        }
-    )
-    hyper_param.to_csv(
-        f"{result_dir}/metrics_{excfg.time_option}_{num_patients}_hyperparams.csv",
-        mode="a",
-        index=False,
-    )
-
-    # K-Fold split
+    # --------------------------------------------------------
+    # K-fold split
+    # --------------------------------------------------------
     (
         train_idx_list,
         val_idx_list,
@@ -210,13 +208,26 @@ def run_gnn(
         test_y_list,
     ) = k_fold(np.asarray(patients), y, excfg.folds)
 
-    # Get device and move data
+    # --------------------------------------------------------
+    # Device
+    # --------------------------------------------------------
     device = get_device()
-    data = data.to(device)  # type: ignore
+    data = data.to(device) # type: ignore
 
-    all_metrics = []
+    fold_metrics = []
+    fold_costs = []
 
-    for fold, (train_idx, val_idx, test_idx, train_y, val_y, test_y) in enumerate(
+    # --------------------------------------------------------
+    # Train/evaluate folds
+    # --------------------------------------------------------
+    for fold, (
+        train_idx,
+        val_idx,
+        test_idx,
+        train_y,
+        val_y,
+        test_y,
+    ) in enumerate(
         zip(
             train_idx_list,
             val_idx_list,
@@ -226,18 +237,29 @@ def run_gnn(
             test_y_list,
         )
     ):
-        # Move all indices and labels to the correct device
-        data.train_idx = torch.Tensor(train_idx).long().to(device)
-        data.valid_idx = torch.Tensor(val_idx).long().to(device)
-        data.test_idx = torch.Tensor(test_idx).long().to(device)
+        tracker = EmissionsTracker(
+            project_name=f"fold_{fold}",
+            output_dir=str(result_dir),
+            measure_power_secs=1,
+        )
 
-        data.train_y = torch.Tensor(train_y).long().to(device) # CHANGED
-        data.valid_y = torch.Tensor(val_y).long().to(device)
-        data.test_y = torch.Tensor(test_y).long().to(device)
+        tracker.start()
+        start = time.perf_counter()
+
+        # Indices and labels
+        data.train_idx = torch.as_tensor(train_idx, dtype=torch.long, device=device)
+        data.valid_idx = torch.as_tensor(val_idx, dtype=torch.long, device=device)
+        data.test_idx = torch.as_tensor(test_idx, dtype=torch.long, device=device)
+
+        data.train_y = torch.as_tensor(train_y, dtype=torch.long, device=device)
+        data.valid_y = torch.as_tensor(val_y, dtype=torch.long, device=device)
+        data.test_y = torch.as_tensor(test_y, dtype=torch.long, device=device)
 
         os.makedirs(f"{result_dir}/{fold}", exist_ok=True)
 
-        # Initialize and train model
+        # ----------------------------------------------------
+        # Model
+        # ----------------------------------------------------
         model = excfg.model_type(
             embed_dim=mcfg.embed_dim,
             hidden_dim=mcfg.hidden_dim,
@@ -248,16 +270,19 @@ def run_gnn(
         ).to(device)
 
         data.model_path = f"{result_dir}/{fold}/model_weights.pth"
+
         model = train_model(
             model,
             data,
             lr=mcfg.lr,
             wd=mcfg.weight_decay,
-            binary=(loader.num_classes == 2)
+            binary=(loader.num_classes == 2),
         )
 
-        # Evaluate
-        metric = evaluate_model(
+        # ----------------------------------------------------
+        # Evaluation
+        # ----------------------------------------------------
+        metrics = evaluate_model(
             model,
             data,
             fold,
@@ -266,15 +291,30 @@ def run_gnn(
             loader.classes,
             excfg.time_option,
         )
-        all_metrics.append(metric)
 
-    # Aggregate metrics
-    panel = pd.concat(all_metrics)
+        fold_metrics.append(metrics)
+
+        # ----------------------------------------------------
+        # Computational cost
+        # ----------------------------------------------------
+        duration = time.perf_counter() - start
+        emissions = tracker.stop()
+
+        fold_costs.append(
+            {
+                "fold": fold,
+                "duration": duration,
+                "emissions": emissions,
+            }
+        )
+
+        print(f"Fold {fold}: duration={duration:.2f}s, emissions={emissions:.4f}")
+
+    panel = pd.concat(fold_metrics)
     metrics_mean = panel.groupby(level=0).mean()
     metrics_mean.index.name = "MEAN"
     metrics_std = panel.groupby(level=0).std()
     metrics_std.index.name = "STD"
-
     mean_std_metrics(metrics_mean, metrics_std, loader.classes).to_csv(
         f"{result_dir}/metrics_{excfg.time_option}_{num_patients}_mean_std.csv",
         sep="\t",
@@ -286,4 +326,12 @@ def run_gnn(
     )
     metrics_std.to_csv(
         f"{result_dir}/metrics_{excfg.time_option}_{num_patients}.csv", mode="a"
+    )
+
+    # --------------------------------------------------------
+    # Build result object
+    # --------------------------------------------------------
+    return SubsampleResult(
+        fold_metrics=pd.concat(fold_metrics),
+        fold_costs=pd.DataFrame(fold_costs),
     )

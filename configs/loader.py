@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List, Literal
 import os
 
+
 class LoaderConfig:
     def __init__(
         self,
@@ -15,6 +16,7 @@ class LoaderConfig:
         results_dir: Path,
         onto_codes: Path,
         sample_processed_dir: Path,
+        root_results_dir: Path,
         text_values_path: Path | None = None,
         data_mode: Literal["meds", "sphn_pc"] = "meds",
     ):
@@ -32,6 +34,7 @@ class LoaderConfig:
         self.results_dir = results_dir
         self.onto_codes = onto_codes
         self.sample_processed_dir = sample_processed_dir
+        self.root_results_dir = root_results_dir
 
         os.makedirs(self.results_dir, exist_ok=True)
         os.makedirs(f"{self.results_dir}/cm", exist_ok=True)

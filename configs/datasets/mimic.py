@@ -27,9 +27,11 @@ class MimicConfig:
 
     def generate(self, idx: int, exp: ExperimentConfig) -> LoaderConfig:
         sample_processed_dir = Path(f"{self.processed_dir}/{idx}")
+        root_results_dir = Path(f"results/{exp.data_mode.data_model}/{exp.model_type.__name__}/{self.task}")
         sample_result_dir = Path(
-            f"results/{exp.data_mode.data_model}/{exp.model_type.__name__}/{self.task}/{idx}"
+            f"{str(root_results_dir)}/{idx}"
         )
+        sample_result_dir.mkdir(parents=True, exist_ok=True)
         return LoaderConfig(
             entities_path=sample_processed_dir
             / f"{exp.data_mode.data_model}_{exp.time_option}_entities_{self.num_patients}.tsv",
@@ -51,6 +53,7 @@ class MimicConfig:
             # / "graph"
             / "labels"
             / f"outcomes_{exp.data_mode.data_model}_TS_{self.num_patients}_{idx}.joblib",
+            root_results_dir=root_results_dir,
             results_dir=sample_result_dir,
             onto_codes=self.source_dir / self.task / f"meds/{idx}" / self.external_codes,
             sample_processed_dir=sample_processed_dir

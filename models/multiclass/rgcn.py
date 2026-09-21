@@ -21,46 +21,32 @@ class RGCNNet(torch.nn.Module):
 
         self.num_proj = Linear(1, embed_dim)
 
-        if self.include_text_features:
-            self.txt_proj = Linear(384, embed_dim)
-        
-        self.node_proj = Linear(embed_dim, hidden_dim)
+        #self.node_proj = Linear(embed_dim, hidden_dim)
 
         self.input_activation = PReLU(embed_dim)
 
-        self.conv1 = RGCNConv(embed_dim, hidden_dim, num_relations, num_bases=12)
-        # self.conv1 = RGATConv(
-        #     in_channels=embed_dim,
-        #     out_channels=hidden_dim * heads,
-        #     heads=heads,
-        #     num_relations=num_relations,
-        #     num_bases=16,
-        # )
-        self.conv2 = RGCNConv(hidden_dim, hidden_dim, num_relations, num_bases=12)
-        self.conv3 = RGCNConv(hidden_dim, num_classes, num_relations, num_bases=12)
+        self.conv1 = RGCNConv(embed_dim, hidden_dim, num_relations, num_bases=8)
+        self.conv3 = RGCNConv(hidden_dim, num_classes, num_relations, num_bases=8)
 
         self.act1 = PReLU(hidden_dim)
-        self.act2 = PReLU(hidden_dim)
+        #self.act2 = PReLU(hidden_dim)
 
     def forward(self, data):
-        num_x = self.num_proj(data.num_x * data.num_mask.view(-1, 1))
+        num_mask = data.num_mask.view(-1, 1)
+        num_x = self.num_proj(data.num_x * num_mask)
         num_x = self.input_activation(num_x)
 
         h = num_x
 
         if self.include_text_features:
-            txt = self.txt_proj(data.txt_x * data.txt_mask.view(-1, 1))
-            txt = self.input_activation(txt)
+            txt_mask = data.txt_mask.view(-1, 1)
+            txt = self.input_activation(data.txt_x * txt_mask)
             h = h + txt
 
-        h = h + self.node_proj(data.x)
+        h = h + data.x
 
         h = self.conv1(h, data.edge_index, data.edge_type)
         h = self.act1(h)
-        h = F.dropout(h, p=self.dropout, training=self.training)
-
-        h = self.conv2(h, data.edge_index, data.edge_type)
-        h = self.act2(h)
         h = F.dropout(h, p=self.dropout, training=self.training)
 
         h = self.conv3(h, data.edge_index, data.edge_type)
