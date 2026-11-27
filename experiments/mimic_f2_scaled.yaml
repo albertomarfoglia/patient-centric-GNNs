@@ -1,0 +1,52 @@
+# F2 follow-up: does keeping the time help once the numeric values are scaled?
+# The F2 ablation showed legacy_shared (time of valued events lost, values
+# rank-scaled) beating separate (time kept, values unscaled) on Full top10.
+# This variant keeps the time AND rank-scales the values (literal_mode:
+# separate_scaled), so the three-way paired comparison on identical folds is:
+#   legacy_shared  vs separate_scaled -> effect of keeping the time
+#   separate       vs separate_scaled -> effect of scaling the values
+# Same graphs (meds2rdf v2.0.0, exp-1k-0.9-full), labels, folds and settings as
+# mimic_rerun and mimic_f2_ablation; only literal_mode differs.
+
+name: mimic_f2_scaled
+description: Full top10 x 11 tasks x 5 subsamples, separate slots with quantile-scaled values.
+
+source:
+  root: ../meds-to-owl-examples/MIMIC
+  labels_dir: exp-1k-0.9   # checked identical to exp-1k before launch
+  graph_dirs:
+    base:    {entire: exp-1k-base,    top10: exp-1k-0.9-base}
+    partial: {entire: exp-1k-partial, top10: exp-1k-0.9-partial}
+    full:    {top10: exp-1k-0.9-full}
+
+tasks:
+  - {name: first_24_in_hospital_mortality, num_patients: 1000}
+  - {name: first_24_in_icu_mortality, num_patients: 1000}
+  - {name: first_48_in_hospital_mortality, num_patients: 1000}
+  - {name: first_48_in_icu_mortality, num_patients: 1000}
+  - {name: post_hospital_discharge_mortality_30d, num_patients: 1000}
+  - {name: post_hospital_discharge_mortality_1y, num_patients: 1000}
+  - {name: first_48_in_hospital_los, num_patients: 1000}
+  - {name: first_48_in_icu_los, num_patients: 1000}
+  - {name: readmission_30d, num_patients: 1000}
+  - {name: ckd_in_diabetics_within_5y_of_kidney_panel, num_patients: 1000}
+  - {name: myocardial_infarction_1-5y_phenotyping, num_patients: 886}
+
+schemas: [full]
+prunings: [top10]
+
+defaults:
+  seed: 0
+  model: {embed_dim: 32, hidden_dim: 32, num_layers: 2, num_bases: 8, embeddings: fixed_random}
+  train: {lr: 0.005, weight_decay: 0.0005, max_epochs: 2000, patience: 50, min_delta: 0.0001}
+  features: {include_text: true, literal_mode: separate, text_mode: concat}
+  evaluation: {folds: 10, split_seed: 77}
+  costs: {tracking_mode: process}
+
+variants:
+  # Only change w.r.t. mimic_rerun: numeric values quantile-scaled (pooled).
+  scaled_values:
+    features: {literal_mode: separate_scaled}
+
+output_root: runs
+cache_root: cache/preprocessed

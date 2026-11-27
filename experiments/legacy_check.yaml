@@ -1,0 +1,30 @@
+# Validation of the refactored pipeline against the runs reported in the first
+# submission (results_exp3: MEDS-RDF-Full, top 10%, 8 folds, shared literal
+# slot, fixed random node embeddings, text on, 2 layers, B = 8).
+# The original runs set no random seed, so agreement is checked on the graph,
+# the folds and the distribution of the metrics, not on identical numbers.
+name: legacy_check
+description: Refactored pipeline with the first-submission settings, one subsample.
+
+source:
+  root: ../meds-to-owl-examples/MIMIC
+  labels_dir: exp0-0.9   # labels are identical for pruned and entire graphs
+  graph_dirs:
+    full: {top10: exp3-0.9}
+
+tasks:
+  - {name: first_24_in_icu_mortality, num_patients: 1000, subsamples: [0]}
+
+schemas: [full]
+prunings: [top10]
+
+defaults:
+  seed: 0
+  model: {embed_dim: 32, hidden_dim: 32, num_layers: 2, num_bases: 8, embeddings: fixed_random}
+  train: {lr: 0.005, weight_decay: 0.0005, max_epochs: 2001, patience: 50, min_delta: 0.0001}
+  features: {include_text: true, literal_mode: legacy_shared, text_mode: legacy_last}
+  evaluation: {folds: 8, split_seed: 77}
+  costs: {tracking_mode: process}
+
+output_root: runs
+cache_root: cache/preprocessed

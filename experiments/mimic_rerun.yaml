@@ -1,0 +1,49 @@
+# Full MIMIC-IV re-run for the revision (10-fold CV shared with the tabular
+# baselines through folds/). Graphs regenerated with meds2rdf v2.0.0 (additive
+# hasSubject, resolves F10) by meds-to-owl-examples/MIMIC/run_notebook_sections.py
+# from the exp-1k cohorts (entire) and exp-1k-0.9 cohorts (SHAP top 10%).
+# Feature settings: separate time/value literal slots (F2 fix), text concat,
+# fixed random node vectors as in the paper (F6; per-code ablation: variant below).
+name: mimic_rerun
+description: 11 MIMIC-IV tasks x Base/Partial/Full x entire/top10 x 5 subsamples, 10 folds.
+
+source:
+  root: ../meds-to-owl-examples/MIMIC
+  labels_dir: exp-1k-0.9   # checked identical to exp-1k before launch
+  graph_dirs:
+    base:    {entire: exp-1k-base,    top10: exp-1k-0.9-base}
+    partial: {entire: exp-1k-partial, top10: exp-1k-0.9-partial}
+    full:    {top10: exp-1k-0.9-full}
+
+tasks:
+  - {name: first_24_in_hospital_mortality, num_patients: 1000}
+  - {name: first_24_in_icu_mortality, num_patients: 1000}
+  - {name: first_48_in_hospital_mortality, num_patients: 1000}
+  - {name: first_48_in_icu_mortality, num_patients: 1000}
+  - {name: post_hospital_discharge_mortality_30d, num_patients: 1000}
+  - {name: post_hospital_discharge_mortality_1y, num_patients: 1000}
+  - {name: first_48_in_hospital_los, num_patients: 1000}
+  - {name: first_48_in_icu_los, num_patients: 1000}
+  - {name: readmission_30d, num_patients: 1000}
+  - {name: ckd_in_diabetics_within_5y_of_kidney_panel, num_patients: 1000}
+  - {name: myocardial_infarction_1-5y_phenotyping, num_patients: 886}
+
+schemas: [base, partial, full]
+prunings: [entire, top10]
+
+defaults:
+  seed: 0
+  model: {embed_dim: 32, hidden_dim: 32, num_layers: 2, num_bases: 8, embeddings: fixed_random}
+  train: {lr: 0.005, weight_decay: 0.0005, max_epochs: 2000, patience: 50, min_delta: 0.0001}
+  features: {include_text: true, literal_mode: separate, text_mode: concat}
+  evaluation: {folds: 10, split_seed: 77}
+  costs: {tracking_mode: process}
+
+variants:
+  default: {}
+  # Example of an ablation (Reviewer 2, MC2): per-code learnable embeddings.
+  # code_emb:
+  #   model: {embeddings: learnable_code}
+
+output_root: runs
+cache_root: cache/preprocessed
