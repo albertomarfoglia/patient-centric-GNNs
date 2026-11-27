@@ -212,3 +212,9 @@ processed_data*
 *.old*
 .vscode
 generation/mimic_external_codes
+
+# manuscript and revision material (kept outside the repository)
+meds_owl_JBI*/
+# pcgnn runner: run outputs and preprocessed caches (fold files in folds/ are versioned)
+runs/
+cache/

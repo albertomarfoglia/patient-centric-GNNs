@@ -12,7 +12,8 @@ class MimicConfig:
         labels_dir: Path,
         task="inhospital_mortality",
         processed_dir: Path = Path("processed_data"),
-        external_codes=Path("MEDS_cohort/mimic_external_codes")
+        external_codes=Path("MEDS_cohort/mimic_external_codes"),
+        run_name: str | None = None,
     ):
         self.name: str = "mimic"
         self.task: str = task
@@ -24,10 +25,12 @@ class MimicConfig:
         self.source_dir: Path = source_dir
         self.labels_dir: Path = labels_dir
         self.processed_dir: Path = processed_dir / task
+        # Name of the results folder; defaults to the task name (previous behaviour).
+        self.run_name: str = run_name or task
 
     def generate(self, idx: int, exp: ExperimentConfig) -> LoaderConfig:
         sample_processed_dir = Path(f"{self.processed_dir}/{idx}")
-        root_results_dir = Path(f"results/{exp.data_mode.data_model}/{exp.model_type.__name__}/{self.task}")
+        root_results_dir = Path(f"results/{exp.data_mode.data_model}/{exp.model_type.__name__}/{self.run_name}")
         sample_result_dir = Path(
             f"{str(root_results_dir)}/{idx}"
         )

@@ -26,13 +26,13 @@ class RGCNet(torch.nn.Module):
         self.input_activation = PReLU(embed_dim)
 
         self.conv1 = RGCNConv(embed_dim, hidden_dim, num_relations, num_bases=8)
-        self.conv2 = RGCNConv(hidden_dim, hidden_dim, num_relations, num_bases=8)
+        # self.conv2 = RGCNConv(hidden_dim, hidden_dim, num_relations, num_bases=8)  # 3-layer variant (Suppl. Table S8)
         # self.conv4 = RGCNConv(hidden_dim, hidden_dim, num_relations, num_bases=8)
         # self.conv5 = RGCNConv(hidden_dim, hidden_dim, num_relations, num_bases=8)
         self.conv3 = RGCNConv(hidden_dim, 1, num_relations, num_bases=8)
 
         self.act1 = PReLU(hidden_dim)
-        self.act2 = PReLU(hidden_dim)
+        # self.act2 = PReLU(hidden_dim)
         # self.act3 = PReLU(hidden_dim)
         # self.act4 = PReLU(hidden_dim)
 
@@ -55,9 +55,9 @@ class RGCNet(torch.nn.Module):
         h = self.act1(h)
         h = F.dropout(h, p=self.dropout, training=self.training)
 
-        h = self.conv2(h, data.edge_index, data.edge_type)
-        h = self.act2(h)
-        h = F.dropout(h, p=self.dropout, training=self.training)
+        # h = self.conv2(h, data.edge_index, data.edge_type)
+        # h = self.act2(h)
+        # h = F.dropout(h, p=self.dropout, training=self.training)
 
         # h = self.conv4(h, data.edge_index, data.edge_type)
         # h = self.act3(h)

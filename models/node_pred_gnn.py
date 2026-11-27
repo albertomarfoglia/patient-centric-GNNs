@@ -82,6 +82,26 @@ def load_data(num_patients: int, embed_dim: int, dcfg: LoaderConfig, inc_txt=Fal
     return data, patients, y
 
 
+def _sync(device):
+    if str(device).startswith("cuda"):
+        torch.cuda.synchronize()
+
+
+@torch.no_grad()
+def _time_inference(model, data, device, repeats: int = 10) -> float:
+    """Mean wall-clock seconds of one full-graph forward pass in eval mode."""
+    model.eval()
+    model(data)  # warm-up
+    _sync(device)
+    times = []
+    for _ in range(repeats):
+        t0 = time.perf_counter()
+        model(data)
+        _sync(device)
+        times.append(time.perf_counter() - t0)
+    return float(np.mean(times))
+
+
 def _compute_binary_classification(model, data, optimizer):
     out = model(data)
     criterion = torch.nn.BCEWithLogitsLoss()
@@ -300,11 +320,22 @@ def run_gnn(
         duration = time.perf_counter() - start
         emissions = tracker.stop()
 
+        # Inference time (outside the CodeCarbon block, so training cost is
+        # unchanged): one full-graph forward pass in eval mode, which scores
+        # every patient node; 1 warm-up pass, then the mean of 10 timed passes.
+        inference_s = _time_inference(model, data, device, repeats=10)
+
         fold_costs.append(
             {
                 "fold": fold,
                 "duration": duration,
                 "emissions": emissions,
+                "inference_s": inference_s,
+                "n_test": len(test_idx),
+                "n_patients": num_patients,
+                "num_nodes": int(data.num_nodes),
+                "num_edges": int(data.edge_index.size(1)),
+                "num_relations": int(data.num_relations),
             }
         )
 

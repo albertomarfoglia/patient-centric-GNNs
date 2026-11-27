@@ -27,8 +27,11 @@ class NeurovascConfig:
 
     def generate(self, idx: int, exp: ExperimentConfig) -> LoaderConfig:
         sample_processed_dir = Path(f"{self.processed_dir}")
-        sample_result_dir = Path(
+        root_results_dir = Path(
             f"results/{exp.data_mode.data_model}/{exp.model_type.__name__}/{self.task}"
+        )
+        sample_result_dir = Path(
+            f"{str(root_results_dir)}/{idx}"
         )
         return LoaderConfig(
             entities_path=sample_processed_dir
@@ -52,5 +55,6 @@ class NeurovascConfig:
             results_dir=sample_result_dir,
             data_mode=exp.data_mode.data_model,
             onto_codes=self.source_dir / self.task / "meds" / self.external_codes,
-            sample_processed_dir=sample_processed_dir
+            sample_processed_dir=sample_processed_dir,
+            root_results_dir=root_results_dir
         )
