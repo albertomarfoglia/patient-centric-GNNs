@@ -42,7 +42,7 @@ class NodeInput(nn.Module):
             raise ValueError(self.mode)
 
         self.value_proj = nn.Linear(1, d)
-        self.has_time = self.literal_mode in ("separate", "separate_scaled")
+        self.has_time = self.literal_mode in ("separate", "separate_scaled", "scaled_relative")
         if self.has_time:
             self.time_proj = nn.Linear(1, d)
         # One PReLU shared by all literal encoders, as in the first submission.

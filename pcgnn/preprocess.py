@@ -13,7 +13,9 @@ Only the storage of literal features is configurable (``FeatureConfig``):
 ``literal_mode='legacy_shared'`` reproduces the original single numeric slot
 (finding F2); ``'separate'`` keeps time and value apart; ``'separate_scaled'``
 also quantile-scales the numeric values (pooled over all values);
-``'scaled_no_time'`` scales the values in the same way and drops ``meds:time``.
+``'scaled_no_time'`` scales the values in the same way and drops ``meds:time``;
+``'scaled_relative'`` scales the values and uses the time relative to the
+patient's prediction time (hours, quantile-scaled).
 
 The output is cached under a key derived from the inputs and the feature
 settings, written atomically, and guarded by a file lock so that parallel
@@ -28,7 +30,7 @@ import json
 import logging
 import shutil
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -94,6 +96,75 @@ def _float(lexical: str) -> float:
         return float("nan")
 
 
+def _timestamp_utc(lexical: str) -> float:
+    """Seconds since the epoch, reading the (naive) xsd:dateTime as UTC."""
+    try:
+        return datetime.strptime(lexical, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
+    except ValueError:
+        return float("nan")
+
+
+EVENT_IRI_PREFIX = "https://teamheka.github.io/meds-data/event/"
+
+
+def _event_subject(iri: str) -> int | None:
+    """Subject id encoded in a meds2rdf event IRI (``event/<subject>_<row>``)."""
+    if not iri.startswith(EVENT_IRI_PREFIX):
+        return None
+    sid = iri[len(EVENT_IRI_PREFIX):].split("_", 1)[0]
+    return int(sid) if sid.isdigit() else None
+
+
+def labels_dir_for(run: RunConfig) -> Path:
+    """MEDS label folder of the run's cohort, derived from ``labels_path``:
+    ``<root>/<task>/labels/<file>.joblib`` -> ``<root>/<task>/meds/<subsample>/MEDS_cohort/labels``."""
+    return Path(run.labels_path).parent.parent / "meds" / str(run.subsample) / "MEDS_cohort" / "labels"
+
+
+def prediction_times(run: RunConfig) -> dict[int, float]:
+    """subject_id -> prediction time (seconds since the epoch, UTC) from the MEDS labels."""
+    import pandas as pd
+
+    files = sorted(labels_dir_for(run).glob("**/*.parquet"))
+    if not files:
+        raise FileNotFoundError(f"no MEDS label files under {labels_dir_for(run)}")
+    df = pd.concat([pd.read_parquet(p, columns=["subject_id", "prediction_time"]) for p in files])
+    if df.subject_id.duplicated().any():
+        raise ValueError(f"{labels_dir_for(run)}: more than one prediction time per subject")
+    pt = pd.to_datetime(df.prediction_time).dt.tz_localize("UTC") if df.prediction_time.dt.tz is None \
+        else pd.to_datetime(df.prediction_time).dt.tz_convert("UTC")
+    return dict(zip(df.subject_id.astype(int), pt.map(lambda x: x.timestamp())))
+
+
+def _relative_hours(time_arr: np.ndarray, ent: dict[str, int], run: RunConfig) -> np.ndarray:
+    """Absolute UTC seconds -> hours relative to the patient's prediction time.
+
+    Raises if an event lies after its patient's prediction time (leakage) or
+    belongs to a subject without a prediction time. Timed nodes that are not
+    events keep no time.
+    """
+    pred = prediction_times(run)
+    out = np.full_like(time_arr, np.nan)
+    after = missing = 0
+    for iri, i in ent.items():
+        if np.isnan(time_arr[i]):
+            continue
+        sid = _event_subject(iri)
+        if sid is None:
+            continue
+        if sid not in pred:
+            missing += 1
+            continue
+        h = (time_arr[i] - pred[sid]) / 3600.0
+        after += h > 0
+        out[i] = h
+    if missing:
+        raise ValueError(f"{run.run_id}: {missing} timed events of subjects without a prediction time")
+    if after:
+        raise ValueError(f"{run.run_id}: {after} events after their prediction time (leakage)")
+    return out
+
+
 def _quantile(seed: int) -> QuantileTransformer:
     # scikit-learn fits the quantiles on a random subsample of 10,000 values;
     # the first submission left it unseeded, so its time scaling varied
@@ -134,6 +205,8 @@ def build_arrays(run: RunConfig) -> dict:
             if f.literal_mode == "legacy_shared":
                 value[h_id] = ts          # shared slot: later literals overwrite it
                 legacy_time_ids.append(h_id)
+            elif f.literal_mode == "scaled_relative":
+                time[h_id] = _timestamp_utc(t)   # made relative after the pass
             elif f.literal_mode != "scaled_no_time":
                 time[h_id] = ts
             # scaled_no_time: the time is dropped (still not an edge, as in all modes)
@@ -149,6 +222,9 @@ def build_arrays(run: RunConfig) -> dict:
     value_arr = np.asarray(value, dtype=np.float64)
     time_arr = np.asarray(time, dtype=np.float64)
 
+    if f.literal_mode == "scaled_relative":
+        time_arr = _relative_hours(time_arr, ent, run)
+
     if f.time_scaling == "quantile":
         if f.literal_mode == "legacy_shared":
             # As originally: every slot registered by a time triple is rescaled,
@@ -163,7 +239,7 @@ def build_arrays(run: RunConfig) -> dict:
                 time_arr[mask] = _quantile(run.seed).fit_transform(
                     time_arr[mask].reshape(-1, 1)).ravel()
 
-    if f.literal_mode in ("separate_scaled", "scaled_no_time"):
+    if f.literal_mode in ("separate_scaled", "scaled_no_time", "scaled_relative"):
         # Numeric values on one common [0, 1] scale (rank among all values),
         # independent of time_scaling.
         mask = ~np.isnan(value_arr)

@@ -38,7 +38,13 @@ import yaml
 #   "scaled_no_time": numeric values as in "separate_scaled"; meds:time is not
 #                    used at all (no time channel). Tests whether the absolute,
 #                    per-patient date-shifted MIMIC timestamps only add noise.
-LiteralMode = Literal["legacy_shared", "separate", "separate_scaled", "scaled_no_time"]
+#   "scaled_relative": numeric values as in "separate_scaled"; the time channel
+#                    holds the event time relative to the patient's prediction
+#                    time (hours, <= 0), quantile-scaled. Prediction times are
+#                    read from the cohort's MEDS labels next to labels_path;
+#                    an event after its prediction time aborts preprocessing.
+LiteralMode = Literal["legacy_shared", "separate", "separate_scaled", "scaled_no_time",
+                      "scaled_relative"]
 
 # Initial node representation (finding F6 and Reviewer 2, major comment 2):
 #   "fixed_random":   one random Xavier vector per node, not trained (first submission).
