@@ -35,7 +35,10 @@ import yaml
 #                    values, fitted on values only). Isolates the F2 effect:
 #                    legacy_shared rank-scales values the same way but drops the
 #                    time of every event that has a value.
-LiteralMode = Literal["legacy_shared", "separate", "separate_scaled"]
+#   "scaled_no_time": numeric values as in "separate_scaled"; meds:time is not
+#                    used at all (no time channel). Tests whether the absolute,
+#                    per-patient date-shifted MIMIC timestamps only add noise.
+LiteralMode = Literal["legacy_shared", "separate", "separate_scaled", "scaled_no_time"]
 
 # Initial node representation (finding F6 and Reviewer 2, major comment 2):
 #   "fixed_random":   one random Xavier vector per node, not trained (first submission).

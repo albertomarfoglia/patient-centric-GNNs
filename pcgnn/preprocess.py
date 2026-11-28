@@ -12,7 +12,8 @@ Graph construction is the same as in the first submission
 Only the storage of literal features is configurable (``FeatureConfig``):
 ``literal_mode='legacy_shared'`` reproduces the original single numeric slot
 (finding F2); ``'separate'`` keeps time and value apart; ``'separate_scaled'``
-also quantile-scales the numeric values (pooled over all values).
+also quantile-scales the numeric values (pooled over all values);
+``'scaled_no_time'`` scales the values in the same way and drops ``meds:time``.
 
 The output is cached under a key derived from the inputs and the feature
 settings, written atomically, and guarded by a file lock so that parallel
@@ -133,8 +134,9 @@ def build_arrays(run: RunConfig) -> dict:
             if f.literal_mode == "legacy_shared":
                 value[h_id] = ts          # shared slot: later literals overwrite it
                 legacy_time_ids.append(h_id)
-            else:
+            elif f.literal_mode != "scaled_no_time":
                 time[h_id] = ts
+            # scaled_no_time: the time is dropped (still not an edge, as in all modes)
             continue
         if r in TEXT_PROPS and f.include_text:
             if f.text_mode == "legacy_last":
@@ -161,7 +163,7 @@ def build_arrays(run: RunConfig) -> dict:
                 time_arr[mask] = _quantile(run.seed).fit_transform(
                     time_arr[mask].reshape(-1, 1)).ravel()
 
-    if f.literal_mode == "separate_scaled":
+    if f.literal_mode in ("separate_scaled", "scaled_no_time"):
         # Numeric values on one common [0, 1] scale (rank among all values),
         # independent of time_scaling.
         mask = ~np.isnan(value_arr)

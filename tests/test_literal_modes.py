@@ -4,6 +4,7 @@
   * separate:        time quantile-scaled, values unscaled.
   * separate_scaled: time as in "separate"; values quantile-scaled to [0, 1],
                      order preserved.
+  * scaled_no_time:  values as in "separate_scaled"; no time at all.
 Run:  python -m pytest -q tests/test_literal_modes.py
 """
 
@@ -73,6 +74,13 @@ def test_separate_scaled_keeps_time_and_scales_values(graph_dir):
     assert list(np.argsort(v_sc[m])) == list(np.argsort(raw[m]))
 
 
+def test_scaled_no_time_drops_time_keeps_scaled_values(graph_dir):
+    v_sc, _ = _arrays(graph_dir, "separate_scaled")
+    v_nt, t_nt = _arrays(graph_dir, "scaled_no_time")
+    assert np.isnan(t_nt).all()
+    np.testing.assert_allclose(v_nt, v_sc, equal_nan=True)
+
+
 def test_legacy_shared_loses_time_of_valued_events(graph_dir):
     v_leg, t_leg = _arrays(graph_dir, "legacy_shared")
     assert np.isnan(t_leg).all()
@@ -84,6 +92,7 @@ def test_model_has_time_channel():
     from pcgnn.model import NodeInput
     g = torch.Generator().manual_seed(0)
     is_code = torch.zeros(3, dtype=torch.bool)
-    for mode, has_time in [("legacy_shared", False), ("separate", True), ("separate_scaled", True)]:
+    for mode, has_time in [("legacy_shared", False), ("separate", True), ("separate_scaled", True),
+                           ("scaled_no_time", False)]:
         m = NodeInput(3, is_code, ModelConfig(), FeatureConfig(literal_mode=mode, include_text=False), g)
         assert hasattr(m, "time_proj") == has_time
