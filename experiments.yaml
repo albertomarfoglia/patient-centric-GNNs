@@ -1,22 +1,10 @@
 experiments:
+  # Inference-timing runs for reviewer comment R1-15 (2026-11-26).
+  # The three representative tasks of main-text Table 3; one subsample
+  # (index 0, 10 folds) per task and schema. The previous configuration is
+  # backed up in meds_owl_JBI_2(1)/revision/experiments/inference_timing/.
   mortality:
-    - task: first_24_in_hospital_mortality
-      sample_size: 1000
-      num_of_samples: 5
-
     - task: first_24_in_icu_mortality
-      sample_size: 1000
-      num_of_samples: 1
-
-    - task: first_48_in_hospital_mortality
-      sample_size: 1000
-      num_of_samples: 1
-
-    - task: first_48_in_icu_mortality
-      sample_size: 1000
-      num_of_samples: 1
-
-    - task: post_hospital_discharge_mortality_30d
       sample_size: 1000
       num_of_samples: 1
 
@@ -24,25 +12,7 @@ experiments:
       sample_size: 1000
       num_of_samples: 1
 
-  los:
-    - task: first_48_in_hospital_los
-      sample_size: 1000
-      num_of_samples: 1
-
-    - task: first_48_in_icu_los
-      sample_size: 1000
-      num_of_samples: 1
-
-  readmission:
-    - task: readmission_30d
-      sample_size: 1000
-      num_of_samples: 1
-
   phenotyping:
-    - task: ckd_in_diabetics_within_5y_of_kidney_panel
-      sample_size: 1000
-      num_of_samples: 1
-
     - task: myocardial_infarction_1-5y_phenotyping
       sample_size: 886
       num_of_samples: 1

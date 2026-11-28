@@ -26,21 +26,21 @@ def main():
     model_cfg = ModelConfig(lr=5e-3, embed_dim=32, hidden_dim=32)
 
     dataset_cfg = NeurovascConfig(
-        source_dir=Path("../meds-to-owl-examples/NEUROVASC2/exports-0.95"),
-        num_patients=503,
-        name="neurovasc_v2",
-        task="stroke-outcome",
+        source_dir=Path("../meds-to-owl-examples/NEUROVASC/exports/full"),
+        num_patients=10000,
+        name="neurovasc",
+        task="stroke-outcome-full",
         classes=["BackHome", "Rehab", "Death"],
     )
 
     text_model = None
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    text_model = SentenceTransformer(
-        "all-MiniLM-L6-v2",
-        device=device,
-        cache_folder="__pycache__",
-    )
+    # text_model = SentenceTransformer(
+    #     "all-MiniLM-L6-v2",
+    #     device=device,
+    #     cache_folder="__pycache__",
+    # )
 
 
     for format_name, format_cfg in FORMAT_GRID.items():
@@ -51,7 +51,7 @@ def main():
             folds=10,
             dataset_samples=1,
             time_option="TS",
-            include_text=True,
+            include_text=False,
             data_mode=format_cfg,
             model_type=RGCNNet,
             #enrich_events=NEUROVASC_ENHANCER_DICT

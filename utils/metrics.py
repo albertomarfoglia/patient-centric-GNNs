@@ -113,8 +113,21 @@ def save_aggregated_results(
             "duration_std": fold_costs["duration"].std(ddof=1),
             "emissions_mean": fold_costs["emissions"].mean(),
             "emissions_std": fold_costs["emissions"].std(ddof=1),
+            **(
+                {
+                    "inference_s_mean": fold_costs["inference_s"].mean(),
+                    "inference_s_std": fold_costs["inference_s"].std(ddof=1),
+                    "inference_ms_per_patient_mean": (
+                        1000 * fold_costs["inference_s"] / fold_costs["n_patients"]
+                    ).mean(),
+                }
+                if "inference_s" in fold_costs
+                else {}
+            ),
         }]
     )
+
+    fold_costs.to_csv(result_dir / "fold_costs.csv", index=False)
 
     cost_summary.to_csv(
         result_dir / "emissions_summary.csv",
